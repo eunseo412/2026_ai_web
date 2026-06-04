@@ -84,22 +84,12 @@ export default function ResultsClient({
 }: ResultsClientProps) {
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
 
-  // Filtering & Sorting State
+  // Sorting State
   const [sortBy, setSortBy] = useState<'distance' | 'price'>('distance');
-  const [filterPublicOnly, setFilterPublicOnly] = useState(false);
-  const [filterFreeOnly, setFilterFreeOnly] = useState(false);
-  const [filterDisabledOnly, setFilterDisabledOnly] = useState(false);
 
-
-
-  // 1. Sort & Filter logic
+  // 1. Sort logic
   const processedLots = initialLots
-    .filter(lot => {
-      if (filterPublicOnly && lot.type !== 'public') return false;
-      if (filterFreeOnly && lot.feeType !== '무료') return false;
-      if (filterDisabledOnly && !lot.disabledSpaces) return false;
-      return true;
-    })
+    .slice()
     .sort((a, b) => {
       if (sortBy === 'distance') {
         return a.distance - b.distance;
@@ -172,26 +162,7 @@ export default function ResultsClient({
             </div>
           </div>
 
-          <div className={styles.filterChips}>
-            <button
-              className={`${styles.filterChip} ${filterPublicOnly ? styles.filterChipActive : ''}`}
-              onClick={() => setFilterPublicOnly(!filterPublicOnly)}
-            >
-              공영주차장만
-            </button>
-            <button
-              className={`${styles.filterChip} ${filterFreeOnly ? styles.filterChipActive : ''}`}
-              onClick={() => setFilterFreeOnly(!filterFreeOnly)}
-            >
-              무료주차만
-            </button>
-            <button
-              className={`${styles.filterChip} ${filterDisabledOnly ? styles.filterChipActive : ''}`}
-              onClick={() => setFilterDisabledOnly(!filterDisabledOnly)}
-            >
-              장애인 주차구역
-            </button>
-          </div>
+
         </div>
 
 
