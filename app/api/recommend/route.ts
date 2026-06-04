@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const prompt = `
 당신은 목적지 맞춤형 주차 추천 서비스인 'ParkingMate'의 스마트 AI 분석 비서입니다.
-사용자가 입력한 목적지와 계획 정보, 그리고 검색된 주차장 목록을 분석하여 **가장 최적의 주차장 1~2개**를 한국어로 추천하고 그 이유를 설명해 주세요.
+사용자가 입력한 목적지와 계획 정보, 그리고 검색된 주차장 목록을 분석하여 가장 최적의 주차장 1~2개를 한국어로 추천하고 그 이유를 설명해 주세요.
 
 목적지: ${destinationName}
 사용자 방문 일정: ${searchParams.date} ${searchParams.time} (예상 체류 시간: ${searchParams.duration}분)
@@ -122,13 +122,13 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
     if (openLots.length === 0) {
       fallbackMd += `⚠️ **주의:** 현재 입력하신 방문 예정 시간대에는 검색 반경 내 모든 주차장이 영업을 종료했거나 휴무일인 것으로 분석되었습니다. 방문 일정을 다시 조정하시거나, 더 큰 검색 반경을 선택해 주십시오.\n\n`;
     } else {
-      fallbackMd += `#### 📍 추천 1순위: **${closest.name}** (최단 거리)\n`;
+      fallbackMd += `#### 📍 추천 1순위: ${closest.name} (최단 거리)\n`;
       fallbackMd += `- **선정 이유:** 목적지에서 불과 **${closest.distance}m** 거리에 위치해 있어 접근성이 가장 뛰어납니다.\n`;
       fallbackMd += `- **요금 분석:** 예상 체류시간(${searchParams.duration}분) 동안 **${closest.feeDisplay}**의 요금이 부과되며, ${closest.disabledSpaces ? '장애인 전용 주차구역이 마련되어 있어 편리합니다.' : '장애인 주차구역 정보가 없습니다.'}\n`;
       fallbackMd += `- **상태:** 방문하시는 시간대에 안정적으로 영업을 지속하고 있어 추천합니다.\n\n`;
 
       if (cheapest.id !== closest.id) {
-        fallbackMd += `#### 💰 가성비 추천: **${cheapest.name}** (최저 요금)\n`;
+        fallbackMd += `#### 💰 가성비 추천: ${cheapest.name} (최저 요금)\n`;
         fallbackMd += `- **선정 이유:** 예상 주차요금이 **${cheapest.feeDisplay}**으로 주변 주차장 중 가장 경제적입니다.\n`;
         fallbackMd += `- **거리:** 목적지로부터 **${cheapest.distance}m** 떨어져 있어 도보 이동이 필요합니다.\n`;
         fallbackMd += `- **운영 시간:** ${cheapest.operatingHoursToday}에 맞추어 주차 가능합니다.\n\n`;
