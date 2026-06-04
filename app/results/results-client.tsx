@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Sparkles, MapPin, Clock, Compass, Phone, CreditCard, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Compass, Phone, CreditCard, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
 import styles from './results.module.css';
 
 // Dynamic import of Leaflet Map with SSR disabled (extremely critical to prevent Next.js build errors)
@@ -83,16 +83,14 @@ export default function ResultsClient({
   initialLots
 }: ResultsClientProps) {
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
-  
+
   // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'distance' | 'price'>('distance');
   const [filterPublicOnly, setFilterPublicOnly] = useState(false);
   const [filterFreeOnly, setFilterFreeOnly] = useState(false);
   const [filterDisabledOnly, setFilterDisabledOnly] = useState(false);
 
-  // AI Recommendation State
-  const [aiRecommendation, setAiRecommendation] = useState<string>('');
-  const [aiLoading, setAiLoading] = useState(false);
+
 
   // 1. Sort & Filter logic
   const processedLots = initialLots
@@ -120,85 +118,27 @@ export default function ResultsClient({
     }
   }, [processedLots, selectedLotId]);
 
-  // 2. Fetch AI Recommendation on mount/data change
-  useEffect(() => {
-    async function fetchAiRecommendation() {
-      if (initialLots.length === 0) return;
-      setAiLoading(true);
-      try {
-        const response = await fetch('/api/recommend', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            destinationName,
-            parkingLots: processedLots,
-            searchParams
-          })
-        });
 
-        if (response.ok) {
-          const data = await response.json();
-          setAiRecommendation(data.recommendation);
-        } else {
-          setAiRecommendation('AI 추천 정보를 불러오지 못했습니다.');
-        }
-      } catch (err) {
-        console.error('Failed to get AI recommendation:', err);
-        setAiRecommendation('네트워크 요인으로 AI 분석을 완료하지 못했습니다.');
-      } finally {
-        setAiLoading(false);
-      }
-    }
 
-    fetchAiRecommendation();
-  }, [destinationName, initialLots]);
 
-  // Helper to render markdown-like structures simply
-  const renderMarkdown = (text: string) => {
-    if (!text) return null;
-    return text.split('\n').map((line, idx) => {
-      if (line.startsWith('###')) {
-        return <h3 key={idx} className="font-bold text-lg mt-3 mb-2">{line.replace('###', '').trim()}</h3>;
-      }
-      if (line.startsWith('####')) {
-        return <h4 key={idx} className="font-bold text-md mt-2 mb-1">{line.replace('####', '').trim()}</h4>;
-      }
-      if (line.startsWith('-') || line.startsWith('*')) {
-        // Basic bold replacements
-        const content = line.replace(/^[-*]\s*/, '');
-        return <li key={idx} style={{ marginBottom: '4px' }}>{parseBold(content)}</li>;
-      }
-      if (line.trim() === '') {
-        return <div key={idx} style={{ height: '8px' }} />;
-      }
-      return <p key={idx} style={{ marginBottom: '6px' }}>{parseBold(line)}</p>;
-    });
-  };
-
-  const parseBold = (str: string) => {
-    const parts = str.split(/\*\*(.*?)\*\*/g);
-    return parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold text-primary">{part}</strong> : part);
-  };
 
   return (
     <div className={styles.container}>
-      
+
       {/* Left Sidebar Pane */}
       <aside className={styles.sidebar}>
-        
+
         {/* Header Block */}
         <div className={styles.searchHeader}>
           <Link href="/" className={styles.backBtn}>
             <ArrowLeft size={16} />
             <span>다시 검색하기</span>
           </Link>
-          
+
           <h2 className={styles.destinationName}>
             {destinationName}
           </h2>
-          
+
           <div className={styles.searchParamsSummary}>
             <span className={styles.paramBadge}>반경 {searchParams.radius}m</span>
             <span className={styles.paramBadge}>
@@ -218,13 +158,13 @@ export default function ResultsClient({
           <div className={styles.sortingRow}>
             <span className={styles.sectionLabel}>정렬 기준</span>
             <div className={styles.sortButtons}>
-              <button 
+              <button
                 className={`${styles.sortBtn} ${sortBy === 'distance' ? styles.sortBtnActive : ''}`}
                 onClick={() => setSortBy('distance')}
               >
                 가까운 순
               </button>
-              <button 
+              <button
                 className={`${styles.sortBtn} ${sortBy === 'price' ? styles.sortBtnActive : ''}`}
                 onClick={() => setSortBy('price')}
               >
@@ -234,19 +174,19 @@ export default function ResultsClient({
           </div>
 
           <div className={styles.filterChips}>
-            <button 
+            <button
               className={`${styles.filterChip} ${filterPublicOnly ? styles.filterChipActive : ''}`}
               onClick={() => setFilterPublicOnly(!filterPublicOnly)}
             >
               공영주차장만
             </button>
-            <button 
+            <button
               className={`${styles.filterChip} ${filterFreeOnly ? styles.filterChipActive : ''}`}
               onClick={() => setFilterFreeOnly(!filterFreeOnly)}
             >
               무료주차만
             </button>
-            <button 
+            <button
               className={`${styles.filterChip} ${filterDisabledOnly ? styles.filterChipActive : ''}`}
               onClick={() => setFilterDisabledOnly(!filterDisabledOnly)}
             >
@@ -255,25 +195,7 @@ export default function ResultsClient({
           </div>
         </div>
 
-        {/* AI Recommendations Panel */}
-        <div className={styles.aiRecommendationCard}>
-          <div className={styles.aiHeader}>
-            <Sparkles size={18} className="animate-pulse-glow" />
-            <span>AI 맞춤형 분석 비서</span>
-          </div>
-          
-          {aiLoading ? (
-            <div className={styles.aiLoading}>
-              <div className={styles.shimmer} style={{ width: '90%' }}></div>
-              <div className={styles.shimmer} style={{ width: '75%' }}></div>
-              <div className={styles.shimmer} style={{ width: '80%' }}></div>
-            </div>
-          ) : (
-            <div className={styles.aiContent}>
-              {renderMarkdown(aiRecommendation)}
-            </div>
-          )}
-        </div>
+
 
         {/* Parking Lot Card Listings */}
         <div className={styles.listContainer}>
@@ -291,7 +213,7 @@ export default function ResultsClient({
             processedLots.map(lot => {
               const isSelected = lot.id === selectedLotId;
               return (
-                <div 
+                <div
                   key={lot.id}
                   className={`${styles.parkingCard} ${isSelected ? styles.parkingCardActive : ''}`}
                   onClick={() => setSelectedLotId(lot.id)}
@@ -311,7 +233,7 @@ export default function ResultsClient({
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className={styles.cardPriceSection}>
                       <span className={styles.cardPrice}>{lot.feeDisplay}</span>
                       <p className={styles.cardPriceLabel}>예상 요금</p>
@@ -337,7 +259,7 @@ export default function ResultsClient({
                       <CreditCard size={14} className={styles.cardInfoIcon} />
                       <span>결제 방법: {lot.paymentMethod || '신용카드'}</span>
                     </div>
-                    
+
                     {isSelected && (
                       <div className="animate-fade-in" style={{ marginTop: '8px', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)' }}>
                         <div className={styles.cardInfoRow} style={{ marginBottom: '4px' }}>
@@ -370,7 +292,7 @@ export default function ResultsClient({
 
       {/* Right Map View pane */}
       <section className={styles.mapContainer}>
-        <ParkingMap 
+        <ParkingMap
           destination={destinationCoord}
           destinationName={destinationName}
           radius={searchParams.radius}

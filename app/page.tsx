@@ -205,7 +205,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* <div className={styles.featureCard}>
+          <div className={styles.featureCard}>
             <div className={styles.featureIconWrapper}>
               <Sparkles size={24} />
             </div>
@@ -213,7 +213,7 @@ export default function Home() {
             <p className={styles.featureDesc}>
               목적지와의 거리, 오늘 운영 상태, 주차 비용을 AI 엔진이 종합적으로 분석하여 최적의 주차 스팟 및 주차 꿀팁을 생성하여 제안합니다.
             </p>
-          </div> */}
+          </div>
 
         </div>
       </section>
