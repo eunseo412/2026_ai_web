@@ -7,14 +7,14 @@ import styles from './contact.module.css';
 export default function ContactPage() {
   const teamMembers = [
     {
-      name: '이채민',
+      name: '김건',
       role: 'Frontend Engineer',
       desc: '홈 검색 인터페이스, 결과 페이지 UI, Leaflet 지도 시각화 및 필터·정렬 기능을 구현했습니다. React 19와 Next.js 기반의 사용자 경험 설계 및 프론트엔드 개발을 담당했습니다.',
       github: 'https://github.com',
       linkedin: 'https://linkedin.com'
     },
     {
-      name: '서은서',
+      name: '이채민',
       role: 'Backend Engineer',
       desc: '주차장 데이터 처리 로직을 개발하고 거리 계산, 요금 계산, 조건별 필터링 기능을 구현했습니다. Next.js API Routes를 활용한 백엔드 서비스 설계를 담당했습니다.',
       github: 'https://github.com',
@@ -28,7 +28,7 @@ export default function ContactPage() {
       linkedin: 'https://linkedin.com'
     },
     {
-      name: '김건',
+      name: '서은서',
       role: 'DevOps & QA Engineer',
       desc: 'Vercel 기반 배포 환경을 구축하고 CI/CD 파이프라인을 관리했습니다. 환경변수 설정, 서비스 로깅, 성능 모니터링 및 품질 검증 프로세스를 담당했습니다.',
       github: 'https://github.com',
