@@ -57,6 +57,7 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
         const text = result.response.text();
 
         if (text && text.trim().length > 0) {
+          console.log(`[Gemini API Success] Returning recommendation (Length: ${text.length} chars)`);
           return NextResponse.json({
             recommendation: text,
             source: 'gemini-1.5-flash'
@@ -79,7 +80,7 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
     const closest = sortedByDist[0];
 
     let fallbackMd = `### 🤖 ParkingMate AI 분석 추천\n\n`;
-    fallbackMd += `**"${destinationName}"** 방문 일정을 위한 주변 주차장을 AI 분석한 추천 결과입니다.\n\n`;
+    fallbackMd += `**"${destinationName}"** 방문 일정을 위한 주변 주차장을 분석한 추천 결과입니다.\n\n`;
 
     if (openLots.length === 0) {
       fallbackMd += `⚠️ **주의:** 현재 입력하신 방문 예정 시간대에는 검색 반경 내 모든 주차장이 영업을 종료했거나 휴무일인 것으로 분석되었습니다. 방문 일정을 다시 조정하시거나, 더 큰 검색 반경을 선택해 주십시오.\n\n`;
@@ -99,6 +100,7 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
       fallbackMd += `💡 **AI 팁:** 주차장 입구 혼잡을 피하기 위해 사전에 **${closest.paymentMethod || '신용카드'}** 결제 가능 여부를 확인하고 이동하시는 것이 좋습니다. 공영주차장의 경우 다자녀, 친환경 차량 할인 혜택이 적용될 수 있습니다.`;
     }
 
+    console.log(`[Rule-based Fallback] Returning local engine recommendation (Length: ${fallbackMd.length} chars)`);
     return NextResponse.json({
       recommendation: fallbackMd,
       source: 'rule-based-fallback'

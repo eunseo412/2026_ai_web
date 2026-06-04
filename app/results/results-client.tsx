@@ -151,33 +151,22 @@ export default function ResultsClient({
       fetchAiRecommendation();
     }, [destinationName, initialLots]);
 
-    const renderMarkdown = (text: string) => {
+    const renderSimpleText = (text: string) => {
       if (!text || text.trim() === '') {
-        return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>추천 가이드 내용이 비어있습니다.</p>;
+        return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>🤖 추천 가이드 내용이 비어있습니다.</p>;
       }
-      return text.split('\n').map((line, idx) => {
-        if (line.startsWith('###')) {
-          return <h3 key={idx} className="font-bold text-lg mt-3 mb-2" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '1.05rem', marginTop: '12px', marginBottom: '8px' }}>{line.replace('###', '').trim()}</h3>;
-        }
-        if (line.startsWith('####')) {
-          return <h4 key={idx} className="font-bold text-md mt-2 mb-1" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.92rem', marginTop: '8px', marginBottom: '4px' }}>{line.replace('####', '').trim()}</h4>;
-        }
-        if (line.startsWith('-') || line.startsWith('*')) {
-          // Basic bold replacements
-          const content = line.replace(/^[-*]\s*/, '');
-          return <li key={idx} style={{ marginBottom: '4px', listStyleType: 'disc', marginLeft: '16px' }}>{parseBold(content)}</li>;
-        }
-        if (line.trim() === '') {
-          return <div key={idx} style={{ height: '8px' }} />;
-        }
-        return <p key={idx} style={{ marginBottom: '6px', lineHeight: '1.5' }}>{parseBold(line)}</p>;
-      });
-    };
-
-    const parseBold = (str: string) => {
-      if (!str) return '';
-      const parts = str.split(/\*\*(.*?)\*\*/g);
-      return parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold" style={{ color: 'var(--primary)', fontWeight: 700 }}>{part}</strong> : part);
+      
+      const parts = text.split(/(\*\*.*?\*\*)/g);
+      return (
+        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-main)', fontSize: '0.88rem' }}>
+          {parts.map((part, idx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={idx} style={{ color: 'var(--primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          })}
+        </div>
+      );
     };
 
   return (
@@ -247,7 +236,7 @@ export default function ResultsClient({
               </div>
             ) : (
               <div className={styles.aiContent}>
-                {renderMarkdown(aiRecommendation)}
+                {renderSimpleText(aiRecommendation)}
               </div>
             )}
           </div>
