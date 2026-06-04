@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, Clock, Compass, Phone, CreditCard, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Compass, CreditCard, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
 import styles from './results.module.css';
 
 // Dynamic import of Leaflet Map with SSR disabled (extremely critical to prevent Next.js build errors)
@@ -156,7 +156,6 @@ export default function ResultsClient({
         {/* Filter Controls */}
         <div className={styles.filterSection}>
           <div className={styles.sortingRow}>
-            <span className={styles.sectionLabel}>정렬 기준</span>
             <div className={styles.sortButtons}>
               <button
                 className={`${styles.sortBtn} ${sortBy === 'distance' ? styles.sortBtnActive : ''}`}
@@ -257,15 +256,11 @@ export default function ResultsClient({
                     </div>
                     <div className={styles.cardInfoRow}>
                       <CreditCard size={14} className={styles.cardInfoIcon} />
-                      <span>결제 방법: {lot.paymentMethod || '신용카드'}</span>
+                      <span>결제 방법: 신용카드 및 현금</span>
                     </div>
 
                     {isSelected && (
                       <div className="animate-fade-in" style={{ marginTop: '8px', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)' }}>
-                        <div className={styles.cardInfoRow} style={{ marginBottom: '4px' }}>
-                          <Phone size={14} className={styles.cardInfoIcon} />
-                          <span>연락처: {lot.phone || '정보 없음'}</span>
-                        </div>
                         <div className={styles.cardInfoRow} style={{ marginBottom: '4px' }}>
                           <CheckCircle2 size={14} className={styles.cardInfoIcon} style={{ color: lot.disabledSpaces ? 'var(--color-success)' : 'var(--text-light)' }} />
                           <span>장애인 주차구역: {lot.disabledSpaces ? '보유 (할인 가능)' : '미보유/정보 없음'}</span>
