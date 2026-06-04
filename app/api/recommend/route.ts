@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini API if key is present
 const apiKey = process.env.GEMINI_API_KEY || '';
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export async function POST(request: Request) {
   try {
@@ -21,12 +18,12 @@ export async function POST(request: Request) {
       });
     }
 
-    // 1. If Gemini API is configured, use it for dynamic AI analysis
-    if (genAI) {
-      try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    let apiConnectionSuccess = false;
+    let geminiErrorMsg: string | null = null;
+    let recommendationText = '';
+    let source = 'rule-based-fallback';
 
-        const prompt = `
+    const prompt = `
 당신은 목적지 맞춤형 주차 추천 서비스인 'ParkingMate'의 스마트 AI 분석 비서입니다.
 사용자가 입력한 목적지와 계획 정보, 그리고 검색된 주차장 목록을 분석하여 **가장 최적의 주차장 1~2개**를 한국어로 추천하고 그 이유를 설명해 주세요.
 
@@ -53,20 +50,60 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
 5. 너무 길지 않게 3~4문장 단위의 문단 2~3개 정도로 요약해 주세요.
 `;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+    // 1. If Gemini API Key is configured, use direct REST API fetch
+    if (apiKey) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const headers = {
+          'Content-Type': 'application/json'
+        };
 
-        if (text && text.trim().length > 0) {
-          console.log(`[Gemini API Success] Returning recommendation (Length: ${text.length} chars)`);
-          return NextResponse.json({
-            recommendation: text,
-            source: 'gemini-1.5-flash'
-          });
+        const payload = {
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        };
+
+        const geminiRes = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+
+        const resData = await geminiRes.json();
+
+        if (geminiRes.ok) {
+          const text = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text && text.trim().length > 0) {
+            apiConnectionSuccess = true;
+            console.log(`[Gemini API Success] Returning recommendation (Length: ${text.length} chars)`);
+            return NextResponse.json({
+              recommendation: text,
+              source: 'gemini-1.5-flash',
+              debug: {
+                hasApiKey: true,
+                apiKeyLength: apiKey.length,
+                apiConnectionSuccess: true,
+                error: null
+              }
+            });
+          } else {
+            console.warn('Gemini API returned empty text candidate structure:', JSON.stringify(resData));
+            geminiErrorMsg = 'Empty text candidate in response';
+          }
+        } else {
+          geminiErrorMsg = resData.error?.message || `HTTP ${geminiRes.status}: ${geminiRes.statusText}`;
+          console.error('Gemini REST API error response:', JSON.stringify(resData));
         }
-        
-        console.warn('Gemini API returned an empty response. Falling back to local rule-based engine.');
-      } catch (geminiError) {
-        console.error('Gemini API execution failed, falling back to rule-based engine:', geminiError);
+      } catch (geminiError: any) {
+        geminiErrorMsg = geminiError.message || String(geminiError);
+        console.error('Gemini REST API fetch exception, falling back to rule-based engine:', geminiError);
       }
     }
 
@@ -103,7 +140,13 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
     console.log(`[Rule-based Fallback] Returning local engine recommendation (Length: ${fallbackMd.length} chars)`);
     return NextResponse.json({
       recommendation: fallbackMd,
-      source: 'rule-based-fallback'
+      source: 'rule-based-fallback',
+      debug: {
+        hasApiKey: !!apiKey,
+        apiKeyLength: apiKey ? apiKey.length : 0,
+        apiConnectionSuccess: false,
+        error: geminiErrorMsg
+      }
     });
 
   } catch (error) {

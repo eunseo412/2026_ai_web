@@ -132,6 +132,14 @@ export default function ResultsClient({
 
           if (response.ok) {
             const data = await response.json();
+            console.log('🤖 [AI Recommendation API Debug] Connection Status:', {
+              source: data.source,
+              hasApiKey: data.debug?.hasApiKey,
+              apiKeyLength: data.debug?.apiKeyLength,
+              apiConnectionSuccess: data.debug?.apiConnectionSuccess,
+              errorDetails: data.debug?.error
+            });
+            
             if (data.recommendation && data.recommendation.trim().length > 0) {
               setAiRecommendation(data.recommendation);
             } else {
@@ -149,27 +157,64 @@ export default function ResultsClient({
       }
 
       fetchAiRecommendation();
-    }, [destinationName, initialLots]);
+    }, [destinationName, initialLots.length]);
 
-    const renderSimpleText = (text: string) => {
-      if (!text || text.trim() === '') {
-        return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>🤖 추천 가이드 내용이 비어있습니다.</p>;
-      }
-      
+    // Parse **bold** parts in a string
+    const parseBoldText = (text: string) => {
       const parts = text.split(/(\*\*.*?\*\*)/g);
-      return (
-        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-main)', fontSize: '0.88rem' }}>
-          {parts.map((part, idx) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-              return <strong key={idx} style={{ color: 'var(--primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
-            }
-            return part;
-          })}
-        </div>
-      );
+      return parts.map((part, idx) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return (
+            <strong key={idx} style={{ color: 'var(--primary)', fontWeight: 700 }}>
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        return part;
+      });
     };
 
-  return (
+    // Formats Markdown title, subtitle, bullets and line breaks beautifully
+    const renderMarkdown = (text: string) => {
+      if (!text) return null;
+      const lines = text.split('\n');
+      
+      return lines.map((line, lineIdx) => {
+        if (line.trim() === '') {
+          return <div key={lineIdx} style={{ height: '8px' }} />;
+        }
+        if (line.startsWith('### ')) {
+          return (
+            <h3 key={lineIdx} style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', marginTop: '14px', marginBottom: '8px' }}>
+              {line.substring(4)}
+            </h3>
+          );
+        }
+        if (line.startsWith('#### ')) {
+          return (
+            <h4 key={lineIdx} style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '10px', marginBottom: '6px' }}>
+              {line.substring(5)}
+            </h4>
+          );
+        }
+        if (line.startsWith('- ')) {
+          const content = line.substring(2);
+          return (
+            <div key={lineIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginLeft: '6px', marginBottom: '4px', fontSize: '0.82rem', lineHeight: '1.5' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>•</span>
+              <span style={{ flex: 1 }}>{parseBoldText(content)}</span>
+            </div>
+          );
+        }
+        return (
+          <p key={lineIdx} style={{ marginBottom: '6px', fontSize: '0.82rem', lineHeight: '1.5' }}>
+            {parseBoldText(line)}
+          </p>
+        );
+      });
+    };
+
+    return (
     <div className={styles.container}>
 
       {/* Left Sidebar Pane */}
@@ -235,8 +280,8 @@ export default function ResultsClient({
                 <div className={styles.shimmer} style={{ width: '80%' }}></div>
               </div>
             ) : (
-              <div className={styles.aiContent}>
-                {renderSimpleText(aiRecommendation)}
+              <div className={styles.aiContent} style={{ color: 'var(--text-main)' }}>
+                {renderMarkdown(aiRecommendation)}
               </div>
             )}
           </div>
