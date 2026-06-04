@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import styles from './results.module.css';
 
 interface MapProps {
   destination: { lat: number; lng: number };
   destinationName: string;
+  radius: number;
   parkingLots: Array<{
     id: string;
     name: string;
@@ -40,6 +41,7 @@ function MapController({ center, selectedLot }: { center: [number, number]; sele
 export default function ParkingMap({
   destination,
   destinationName,
+  radius,
   parkingLots,
   selectedLotId,
   onSelectLot
@@ -93,6 +95,20 @@ export default function ParkingMap({
           </Popup>
         </Marker>
       )}
+
+      {/* Radius Circle */}
+      <Circle
+        key={`${destination.lat}-${destination.lng}-${radius}`}
+        center={centerCoord}
+        radius={radius}
+        pathOptions={{
+          color: 'var(--primary, #3b82f6)',
+          fillColor: 'var(--primary, #3b82f6)',
+          fillOpacity: 0.15,
+          weight: 2,
+          dashArray: '5, 5'
+        }}
+      />
 
       {/* Parking Lot Markers (Red or Green Active pins) */}
       {parkingLots.map((lot) => {

@@ -373,6 +373,7 @@ export default function ResultsClient({
         <ParkingMap 
           destination={destinationCoord}
           destinationName={destinationName}
+          radius={searchParams.radius}
           parkingLots={processedLots}
           selectedLotId={selectedLotId}
           onSelectLot={(id) => setSelectedLotId(id)}
