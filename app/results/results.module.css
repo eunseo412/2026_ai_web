@@ -146,10 +146,10 @@
 /* AI Recommendation Card */
 .aiRecommendationCard {
   margin: 16px 24px;
-  padding: 20px;
+  padding: 16px;
   border-radius: var(--radius-md);
-  border: 1.5px dashed var(--primary);
-  background: linear-gradient(135deg, var(--bg-success-light) 0%, var(--bg-info-light) 100%);
+  border: 1px solid var(--border);
+  background-color: var(--bg-main);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
