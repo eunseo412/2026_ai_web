@@ -586,7 +586,10 @@ export async function GET(request: Request) {
       if (lot.feeType === '무료') {
         estimatedFee = 0;
         feeDisplay = '무료';
-      } else if (lot.basicTime === 0 || lot.basicFee === 0) {
+      } else if (
+        isNaN(lot.basicTime) || isNaN(lot.basicFee) || isNaN(lot.addUnitTime) || isNaN(lot.addUnitFee) ||
+        lot.basicTime === 0 || lot.basicFee === 0 || lot.addUnitTime === 0
+      ) {
         estimatedFee = 0;
         feeDisplay = '요금 정보 없음';
       } else {
@@ -602,7 +605,12 @@ export async function GET(request: Request) {
           estimatedFee = lot.dayFee;
         }
 
-        feeDisplay = `${estimatedFee.toLocaleString()}원`;
+        if (isNaN(estimatedFee)) {
+          estimatedFee = 0;
+          feeDisplay = '요금 정보 없음';
+        } else {
+          feeDisplay = `${estimatedFee.toLocaleString()}원`;
+        }
       }
 
       return {

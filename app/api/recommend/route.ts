@@ -56,10 +56,14 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
         const result = await model.generateContent(prompt);
         const text = result.response.text();
 
-        return NextResponse.json({
-          recommendation: text,
-          source: 'gemini-1.5-flash'
-        });
+        if (text && text.trim().length > 0) {
+          return NextResponse.json({
+            recommendation: text,
+            source: 'gemini-1.5-flash'
+          });
+        }
+        
+        console.warn('Gemini API returned an empty response. Falling back to local rule-based engine.');
       } catch (geminiError) {
         console.error('Gemini API execution failed, falling back to rule-based engine:', geminiError);
       }

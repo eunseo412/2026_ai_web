@@ -112,67 +112,73 @@ export default function ResultsClient({
     }
   }, [processedLots, selectedLotId]);
 
-  // 2. Fetch AI Recommendation on mount/data change
-  useEffect(() => {
-    async function fetchAiRecommendation() {
-      if (initialLots.length === 0) return;
-      setAiLoading(true);
-      try {
-        const response = await fetch('/api/recommend', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            destinationName,
-            parkingLots: processedLots,
-            searchParams
-          })
-        });
+    // 2. Fetch AI Recommendation on mount/data change
+    useEffect(() => {
+      async function fetchAiRecommendation() {
+        if (initialLots.length === 0) return;
+        setAiLoading(true);
+        try {
+          const response = await fetch('/api/recommend', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              destinationName,
+              parkingLots: processedLots,
+              searchParams
+            })
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          setAiRecommendation(data.recommendation);
-        } else {
-          setAiRecommendation('AI 추천 정보를 불러오지 못했습니다.');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.recommendation && data.recommendation.trim().length > 0) {
+              setAiRecommendation(data.recommendation);
+            } else {
+              setAiRecommendation('🤖 목적지 주변 주차장 분석 정보를 가져왔으나 추천 텍스트가 비어있습니다. 상세 리스트에서 가까운 주차장 요금과 운영 시간을 확인해보세요.');
+            }
+          } else {
+            setAiRecommendation('🤖 AI 추천 정보를 불러오지 못했습니다. 잠시 후 다시 조회를 진행해 주세요.');
+          }
+        } catch (err) {
+          console.error('Failed to get AI recommendation:', err);
+          setAiRecommendation('🤖 네트워크 신호 불안정으로 AI 실시간 분석을 완료하지 못했습니다. 상세 리스트의 요금 및 운영 정보를 바탕으로 주차 계획을 세워보세요.');
+        } finally {
+          setAiLoading(false);
         }
-      } catch (err) {
-        console.error('Failed to get AI recommendation:', err);
-        setAiRecommendation('네트워크 요인으로 AI 분석을 완료하지 못했습니다.');
-      } finally {
-        setAiLoading(false);
       }
-    }
 
-    fetchAiRecommendation();
-  }, [destinationName, initialLots]);
+      fetchAiRecommendation();
+    }, [destinationName, initialLots]);
 
-  // Helper to render markdown-like structures simply
-  const renderMarkdown = (text: string) => {
-    if (!text) return null;
-    return text.split('\n').map((line, idx) => {
-      if (line.startsWith('###')) {
-        return <h3 key={idx} className="font-bold text-lg mt-3 mb-2">{line.replace('###', '').trim()}</h3>;
+    const renderMarkdown = (text: string) => {
+      if (!text || text.trim() === '') {
+        return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>추천 가이드 내용이 비어있습니다.</p>;
       }
-      if (line.startsWith('####')) {
-        return <h4 key={idx} className="font-bold text-md mt-2 mb-1">{line.replace('####', '').trim()}</h4>;
-      }
-      if (line.startsWith('-') || line.startsWith('*')) {
-        // Basic bold replacements
-        const content = line.replace(/^[-*]\s*/, '');
-        return <li key={idx} style={{ marginBottom: '4px' }}>{parseBold(content)}</li>;
-      }
-      if (line.trim() === '') {
-        return <div key={idx} style={{ height: '8px' }} />;
-      }
-      return <p key={idx} style={{ marginBottom: '6px' }}>{parseBold(line)}</p>;
-    });
-  };
+      return text.split('\n').map((line, idx) => {
+        if (line.startsWith('###')) {
+          return <h3 key={idx} className="font-bold text-lg mt-3 mb-2" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '1.05rem', marginTop: '12px', marginBottom: '8px' }}>{line.replace('###', '').trim()}</h3>;
+        }
+        if (line.startsWith('####')) {
+          return <h4 key={idx} className="font-bold text-md mt-2 mb-1" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.92rem', marginTop: '8px', marginBottom: '4px' }}>{line.replace('####', '').trim()}</h4>;
+        }
+        if (line.startsWith('-') || line.startsWith('*')) {
+          // Basic bold replacements
+          const content = line.replace(/^[-*]\s*/, '');
+          return <li key={idx} style={{ marginBottom: '4px', listStyleType: 'disc', marginLeft: '16px' }}>{parseBold(content)}</li>;
+        }
+        if (line.trim() === '') {
+          return <div key={idx} style={{ height: '8px' }} />;
+        }
+        return <p key={idx} style={{ marginBottom: '6px', lineHeight: '1.5' }}>{parseBold(line)}</p>;
+      });
+    };
 
-  const parseBold = (str: string) => {
-    const parts = str.split(/\*\*(.*?)\*\*/g);
-    return parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold text-primary">{part}</strong> : part);
-  };
+    const parseBold = (str: string) => {
+      if (!str) return '';
+      const parts = str.split(/\*\*(.*?)\*\*/g);
+      return parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold" style={{ color: 'var(--primary)', fontWeight: 700 }}>{part}</strong> : part);
+    };
 
   return (
     <div className={styles.container}>
@@ -285,7 +291,9 @@ export default function ResultsClient({
                     </div>
 
                     <div className={styles.cardPriceSection}>
-                      <span className={styles.cardPrice}>{lot.feeDisplay}</span>
+                      <span className={styles.cardPrice}>
+                        {lot.feeDisplay.includes('NaN') ? '요금 정보 없음' : lot.feeDisplay}
+                      </span>
                       <p className={styles.cardPriceLabel}>예상 요금</p>
                     </div>
                   </div>
