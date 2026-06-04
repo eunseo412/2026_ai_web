@@ -209,9 +209,9 @@ export default function Home() {
             <div className={styles.featureIconWrapper}>
               <Sparkles size={24} />
             </div>
-            <h3 className={styles.featureTitle}>AI 맞춤형 비서 추천</h3>
+            <h3 className={styles.featureTitle}>맞춤형 추천</h3>
             <p className={styles.featureDesc}>
-              목적지와의 거리, 오늘 운영 상태, 주차 비용을 AI 엔진이 종합적으로 분석하여 최적의 주차 스팟 및 주차 꿀팁을 생성하여 제안합니다.
+              목적지와의 거리, 오늘 운영 상태, 주차 비용을 종합적으로 분석하여 최적의 주차 스팟 및 주차 꿀팁을 생성하여 제안합니다.
             </p>
           </div>
 
