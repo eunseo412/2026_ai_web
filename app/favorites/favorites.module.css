@@ -1,0 +1,51 @@
+.page { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; display: flex; flex-direction: column; gap: 28px; }
+
+.pageHeader { display: flex; flex-direction: column; gap: 8px; }
+
+.pageTitle { display: flex; align-items: center; gap: 12px; font-size: 1.8rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
+
+.pageSubtitle { font-size: 0.93rem; color: var(--text-muted); max-width: 540px; line-height: 1.6; }
+
+.emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 24px; text-align: center; color: var(--text-muted); background: var(--bg-card); border: 1px dashed var(--border); border-radius: var(--radius-md); gap: 8px; }
+
+.emptyState h2 { font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+
+.emptyState p { font-size: 0.9rem; max-width: 340px; line-height: 1.6; }
+
+.primaryBtn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: white; border: none; font-weight: 600; padding: 11px 22px; border-radius: var(--radius-sm); font-size: 0.9rem; cursor: pointer; transition: var(--transition-fast); text-decoration: none; }
+
+.primaryBtn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: var(--transition-normal); }
+
+.card:hover { box-shadow: var(--shadow-md); border-color: var(--color-warning); transform: translateY(-2px); }
+
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+
+.cardTitle { font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+
+.sourceBadge { display: inline-block; background: var(--bg-info-light); color: var(--color-info); font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+.removeBtn { background: none; border: none; color: var(--text-light); cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; transition: var(--transition-fast); flex-shrink: 0; }
+
+.removeBtn:hover { color: var(--color-danger); background: var(--bg-danger-light); }
+
+.cardBody { display: flex; flex-direction: column; gap: 8px; }
+
+.infoRow { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
+
+.icon { color: var(--text-light); flex-shrink: 0; }
+
+.price { font-size: 0.95rem; font-weight: 700; color: var(--primary); }
+
+.cardFooter { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; }
+
+.savedAt { font-size: 0.78rem; color: var(--text-light); }
+
+.mapBtn { display: flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.78rem; font-weight: 500; padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: var(--transition-fast); }
+
+.mapBtn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }

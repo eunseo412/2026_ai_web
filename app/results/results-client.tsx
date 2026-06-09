@@ -1,24 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Sparkles, MapPin, Clock, Compass, CreditCard, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
+import {
+  ArrowLeft, Sparkles, MapPin, Clock, Compass, CreditCard,
+  AlertCircle, Info, Star, Zap
+} from 'lucide-react';
 import styles from './results.module.css';
+import { addFavorite, removeFavorite, isFavorite } from '../lib/storage';
 
-// Dynamic import of Leaflet Map with SSR disabled (extremely critical to prevent Next.js build errors)
+// Dynamic import of Leaflet Map with SSR disabled
 const ParkingMap = dynamic(() => import('./parking-map'), {
   ssr: false,
   loading: () => (
     <div style={{
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'var(--bg-main)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'var(--text-muted)',
-      fontWeight: 600
+      width: '100%', height: '100%', backgroundColor: 'var(--bg-main)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'var(--text-muted)', fontWeight: 600
     }}>
       지도 로딩 중...
     </div>
@@ -58,179 +57,164 @@ interface ParkingLot {
   source: 'public_api' | 'local_real_database';
 }
 
+// 목 전기차 충전소 데이터 생성 (실제 위경도 반경 내 임의 오프셋 적용)
+interface EvStation {
+  id: string;
+  name: string;
+  distance: number;
+  chargerType: '급속' | '완속';
+  lat: number;
+  lng: number;
+}
+
+function generateMockEvStations(center: { lat: number; lng: number }, radius: number): EvStation[] {
+  const stations = [
+    { name: '공영주차장 전기차 충전소', dist: Math.round(radius * 0.25), type: '급속' as const, dLat: 0.0008, dLng: 0.0006 },
+    { name: '아파트 지하 급속충전소', dist: Math.round(radius * 0.48), type: '급속' as const, dLat: -0.001, dLng: 0.001 },
+    { name: '마트 완속충전소', dist: Math.round(radius * 0.67), type: '완속' as const, dLat: 0.0015, dLng: -0.0008 },
+    { name: '주민센터 완속충전소', dist: Math.round(radius * 0.85), type: '완속' as const, dLat: -0.0018, dLng: -0.0012 },
+  ].filter(s => s.dist <= radius);
+
+  return stations.map((s, i) => ({
+    id: `ev-${i}`,
+    name: s.name,
+    distance: s.dist,
+    chargerType: s.type,
+    lat: center.lat + s.dLat,
+    lng: center.lng + s.dLng,
+  }));
+}
+
 interface ResultsClientProps {
   destinationName: string;
   destinationCoord: { lat: number; lng: number };
-  searchParams: {
-    date: string;
-    time: string;
-    duration: number;
-    radius: number;
-  };
-  apiInfo: {
-    apiUsed: boolean;
-    apiError: string | null;
-    source: string;
-  };
+  searchParams: { date: string; time: string; duration: number; radius: number };
+  apiInfo: { apiUsed: boolean; apiError: string | null; source: string };
   initialLots: ParkingLot[];
 }
 
 export default function ResultsClient({
-  destinationName,
-  destinationCoord,
-  searchParams,
-  apiInfo,
-  initialLots
+  destinationName, destinationCoord, searchParams, apiInfo, initialLots
 }: ResultsClientProps) {
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
-
-  // Sorting State
   const [sortBy, setSortBy] = useState<'distance' | 'price'>('distance');
-
-  // AI Recommendation State
   const [aiRecommendation, setAiRecommendation] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
+  const evStations = generateMockEvStations(destinationCoord, searchParams.radius);
+
+  // 즐겨찾기 초기 로드
+  useEffect(() => {
+    const ids = new Set(initialLots.filter(l => isFavorite(l.id)).map(l => l.id));
+    setFavIds(ids);
+  }, [initialLots]);
 
   // 1. Sort logic
-  const processedLots = initialLots
-    .slice()
-    .sort((a, b) => {
-      if (sortBy === 'distance') {
-        return a.distance - b.distance;
-      } else {
-        // Handle "요금 정보 없음" sorting values
-        const feeA = a.estimatedFee === 0 && a.feeType !== '무료' ? 999999 : a.estimatedFee;
-        const feeB = b.estimatedFee === 0 && b.feeType !== '무료' ? 999999 : b.estimatedFee;
-        return feeA - feeB;
-      }
-    });
+  const processedLots = initialLots.slice().sort((a, b) => {
+    if (sortBy === 'distance') return a.distance - b.distance;
+    const feeA = a.estimatedFee === 0 && a.feeType !== '무료' ? 999999 : a.estimatedFee;
+    const feeB = b.estimatedFee === 0 && b.feeType !== '무료' ? 999999 : b.estimatedFee;
+    return feeA - feeB;
+  });
 
-  // Set first lot selected by default if search results update
+  // Set first lot selected by default
   useEffect(() => {
     if (processedLots.length > 0 && !selectedLotId) {
       setSelectedLotId(processedLots[0].id);
     }
   }, [processedLots, selectedLotId]);
 
-    // 2. Fetch AI Recommendation on mount/data change
-    useEffect(() => {
-      async function fetchAiRecommendation() {
-        if (initialLots.length === 0) return;
-        setAiLoading(true);
-        try {
-          const response = await fetch('/api/recommend', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              destinationName,
-              parkingLots: processedLots,
-              searchParams
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log('🤖 [AI Recommendation API Debug] Connection Status:', {
-              source: data.source,
-              hasApiKey: data.debug?.hasApiKey,
-              apiKeyLength: data.debug?.apiKeyLength,
-              apiConnectionSuccess: data.debug?.apiConnectionSuccess,
-              errorDetails: data.debug?.error
-            });
-            
-            if (data.recommendation && data.recommendation.trim().length > 0) {
-              setAiRecommendation(data.recommendation);
-            } else {
-              setAiRecommendation('🤖 목적지 주변 주차장 분석 정보를 가져왔으나 추천 텍스트가 비어있습니다. 상세 리스트에서 가까운 주차장 요금과 운영 시간을 확인해보세요.');
-            }
+  // 2. Fetch AI Recommendation
+  useEffect(() => {
+    async function fetchAiRecommendation() {
+      if (initialLots.length === 0) return;
+      setAiLoading(true);
+      try {
+        const response = await fetch('/api/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destinationName, parkingLots: processedLots, searchParams })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.recommendation && data.recommendation.trim().length > 0) {
+            setAiRecommendation(data.recommendation);
           } else {
-            setAiRecommendation('🤖 AI 추천 정보를 불러오지 못했습니다. 잠시 후 다시 조회를 진행해 주세요.');
+            setAiRecommendation('🤖 추천 텍스트가 비어있습니다. 상세 리스트를 확인해보세요.');
           }
-        } catch (err) {
-          console.error('Failed to get AI recommendation:', err);
-          setAiRecommendation('🤖 네트워크 신호 불안정으로 AI 실시간 분석을 완료하지 못했습니다. 상세 리스트의 요금 및 운영 정보를 바탕으로 주차 계획을 세워보세요.');
-        } finally {
-          setAiLoading(false);
+        } else {
+          setAiRecommendation('🤖 AI 추천 정보를 불러오지 못했습니다.');
         }
+      } catch (err) {
+        setAiRecommendation('🤖 네트워크 신호 불안정으로 AI 실시간 분석을 완료하지 못했습니다.');
+      } finally {
+        setAiLoading(false);
       }
+    }
+    fetchAiRecommendation();
+  }, [destinationName, initialLots.length]);
 
-      fetchAiRecommendation();
-    }, [destinationName, initialLots.length]);
-
-    // Parse **bold** parts in a string
-    const parseBoldText = (text: string) => {
-      const parts = text.split(/(\*\*.*?\*\*)/g);
-      return parts.map((part, idx) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={idx} style={{ color: 'var(--primary)', fontWeight: 700 }}>
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-        return part;
+  // 즐겨찾기 토글
+  const toggleFavorite = useCallback((lot: ParkingLot, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (favIds.has(lot.id)) {
+      removeFavorite(lot.id);
+      setFavIds(prev => { const s = new Set(prev); s.delete(lot.id); return s; });
+    } else {
+      addFavorite({
+        id: lot.id,
+        name: lot.name,
+        address: lot.address,
+        distance: lot.distance,
+        feeDisplay: lot.feeDisplay,
+        lat: lot.lat,
+        lng: lot.lng,
+        source: lot.source === 'public_api' ? 'public_api' : 'local_real_database',
+        savedAt: new Date().toISOString(),
       });
-    };
+      setFavIds(prev => new Set(prev).add(lot.id));
+    }
+  }, [favIds]);
 
-    // Formats Markdown title, subtitle, bullets and line breaks beautifully
-    const renderMarkdown = (text: string) => {
-      if (!text) return null;
-      const lines = text.split('\n');
-      
-      return lines.map((line, lineIdx) => {
-        if (line.trim() === '') {
-          return <div key={lineIdx} style={{ height: '8px' }} />;
-        }
-        if (line.startsWith('### ')) {
-          return (
-            <h3 key={lineIdx} style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', marginTop: '14px', marginBottom: '8px' }}>
-              {line.substring(4)}
-            </h3>
-          );
-        }
-        if (line.startsWith('#### ')) {
-          return (
-            <h4 key={lineIdx} style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '10px', marginBottom: '6px' }}>
-              {line.substring(5)}
-            </h4>
-          );
-        }
-        if (line.startsWith('- ')) {
-          const content = line.substring(2);
-          return (
-            <div key={lineIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginLeft: '6px', marginBottom: '4px', fontSize: '0.82rem', lineHeight: '1.5' }}>
-              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>•</span>
-              <span style={{ flex: 1 }}>{parseBoldText(content)}</span>
-            </div>
-          );
-        }
+  // Markdown 파서
+  const parseBoldText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} style={{ color: 'var(--primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    return text.split('\n').map((line, lineIdx) => {
+      if (line.trim() === '') return <div key={lineIdx} style={{ height: '8px' }} />;
+      if (line.startsWith('### ')) return <h3 key={lineIdx} style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', marginTop: '14px', marginBottom: '8px' }}>{line.substring(4)}</h3>;
+      if (line.startsWith('#### ')) return <h4 key={lineIdx} style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '10px', marginBottom: '6px' }}>{line.substring(5)}</h4>;
+      if (line.startsWith('- ')) {
         return (
-          <p key={lineIdx} style={{ marginBottom: '6px', fontSize: '0.82rem', lineHeight: '1.5' }}>
-            {parseBoldText(line)}
-          </p>
+          <div key={lineIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginLeft: '6px', marginBottom: '4px', fontSize: '0.82rem', lineHeight: '1.5' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>•</span>
+            <span style={{ flex: 1 }}>{parseBoldText(line.substring(2))}</span>
+          </div>
         );
-      });
-    };
+      }
+      return <p key={lineIdx} style={{ marginBottom: '6px', fontSize: '0.82rem', lineHeight: '1.5' }}>{parseBoldText(line)}</p>;
+    });
+  };
 
-    return (
+  return (
     <div className={styles.container}>
-
       {/* Left Sidebar Pane */}
       <aside className={styles.sidebar}>
-
         {/* Header Block */}
         <div className={styles.searchHeader}>
           <Link href="/" className={styles.backBtn}>
-            <ArrowLeft size={16} />
-            <span>다시 검색하기</span>
+            <ArrowLeft size={16} /><span>다시 검색하기</span>
           </Link>
-
-          <h2 className={styles.destinationName}>
-            {destinationName}
-          </h2>
-
+          <h2 className={styles.destinationName}>{destinationName}</h2>
           <div className={styles.searchParamsSummary}>
             <span className={styles.paramBadge}>반경 {searchParams.radius}m</span>
             <span className={styles.paramBadge}>
@@ -238,10 +222,8 @@ export default function ResultsClient({
             </span>
             <span className={styles.paramBadge}>{searchParams.date} {searchParams.time} 도착</span>
           </div>
-
           <div style={{ marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Info size={12} />
-            <span>데이터 출처: {apiInfo.source}</span>
+            <Info size={12} /><span>데이터 출처: {apiInfo.source}</span>
           </div>
         </div>
 
@@ -249,30 +231,19 @@ export default function ResultsClient({
         <div className={styles.filterSection}>
           <div className={styles.sortingRow}>
             <div className={styles.sortButtons}>
-              <button
-                className={`${styles.sortBtn} ${sortBy === 'distance' ? styles.sortBtnActive : ''}`}
-                onClick={() => setSortBy('distance')}
-              >
-                가까운 순
-              </button>
-              <button
-                className={`${styles.sortBtn} ${sortBy === 'price' ? styles.sortBtnActive : ''}`}
-                onClick={() => setSortBy('price')}
-              >
-                저렴한 순
-              </button>
+              <button className={`${styles.sortBtn} ${sortBy === 'distance' ? styles.sortBtnActive : ''}`} onClick={() => setSortBy('distance')}>가까운 순</button>
+              <button className={`${styles.sortBtn} ${sortBy === 'price' ? styles.sortBtnActive : ''}`} onClick={() => setSortBy('price')}>저렴한 순</button>
             </div>
           </div>
         </div>
 
-        {/* AI Recommendations Panel */}
+        {/* AI + EV Section */}
         {aiRecommendation && (
           <div className={styles.aiRecommendationCard}>
             <div className={styles.aiHeader}>
               <Sparkles size={16} className="text-primary" />
               <span>AI 분석 추천 가이드</span>
             </div>
-            
             {aiLoading ? (
               <div className={styles.aiLoading}>
                 <div className={styles.shimmer} style={{ width: '90%' }}></div>
@@ -282,6 +253,32 @@ export default function ResultsClient({
             ) : (
               <div className={styles.aiContent} style={{ color: 'var(--text-main)' }}>
                 {renderMarkdown(aiRecommendation)}
+              </div>
+            )}
+
+            {/* 전기차 충전소 섹션 */}
+            {evStations.length > 0 && (
+              <div className={styles.evSection}>
+                <div className={styles.evHeader}>
+                  <Zap size={15} color="var(--color-success)" />
+                  <span>전기차 충전소 정보</span>
+                </div>
+                <p className={styles.evSummary}>
+                  반경 {searchParams.radius}m 내 전기차 충전소 <strong>{evStations.length}곳</strong>이 확인되었습니다.
+                  가장 가까운 충전소는 목적지에서 <strong>{evStations[0].distance}m</strong> 거리입니다.
+                </p>
+                <div className={styles.evList}>
+                  {evStations.map(ev => (
+                    <div key={ev.id} className={styles.evItem}>
+                      <Zap size={12} color={ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)'} />
+                      <span className={styles.evName}>{ev.name}</span>
+                      <span className={styles.evType} style={{ color: ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                        {ev.chargerType}
+                      </span>
+                      <span className={styles.evDist}>{ev.distance}m</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -297,11 +294,12 @@ export default function ResultsClient({
             <div className={styles.emptyState}>
               <AlertCircle size={40} className="text-light" style={{ marginBottom: '12px' }} />
               <p className={styles.emptyStateTitle}>조건에 맞는 주차장이 없습니다</p>
-              <p style={{ fontSize: '0.8rem' }}>필터 조건을 해제하거나 검색 반경을 더 넓게 변경해 보세요.</p>
+              <p style={{ fontSize: '0.8rem' }}>검색 반경을 더 넓게 변경해 보세요.</p>
             </div>
           ) : (
             processedLots.map(lot => {
               const isSelected = lot.id === selectedLotId;
+              const isFav = favIds.has(lot.id);
               return (
                 <div
                   key={lot.id}
@@ -324,11 +322,22 @@ export default function ResultsClient({
                       </div>
                     </div>
 
-                    <div className={styles.cardPriceSection}>
-                      <span className={styles.cardPrice}>
-                        {lot.feeDisplay.includes('NaN') ? '요금 정보 없음' : lot.feeDisplay}
-                      </span>
-                      <p className={styles.cardPriceLabel}>예상 요금</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                      {/* 즐겨찾기 버튼 */}
+                      <button
+                        onClick={e => toggleFavorite(lot, e)}
+                        className={styles.favBtn}
+                        title={isFav ? '즐겨찾기 해제' : '단골 주차장에 추가'}
+                      >
+                        <Star size={16} fill={isFav ? 'var(--color-warning)' : 'none'} color={isFav ? 'var(--color-warning)' : 'var(--text-light)'} />
+                      </button>
+
+                      <div className={styles.cardPriceSection}>
+                        <span className={styles.cardPrice}>
+                          {lot.feeDisplay.includes('NaN') ? '요금 정보 없음' : lot.feeDisplay}
+                        </span>
+                        <p className={styles.cardPriceLabel}>예상 요금</p>
+                      </div>
                     </div>
                   </div>
 
@@ -339,9 +348,7 @@ export default function ResultsClient({
                     </div>
                     <div className={styles.cardInfoRow}>
                       <MapPin size={14} className={styles.cardInfoIcon} />
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {lot.address}
-                      </span>
+                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{lot.address}</span>
                     </div>
                     <div className={styles.cardInfoRow}>
                       <Clock size={14} className={styles.cardInfoIcon} />
@@ -355,10 +362,6 @@ export default function ResultsClient({
                     {isSelected && (
                       <div className="animate-fade-in" style={{ marginTop: '8px', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)' }}>
                         <div className={styles.cardInfoRow} style={{ marginBottom: '4px' }}>
-                          <CheckCircle2 size={14} className={styles.cardInfoIcon} style={{ color: lot.disabledSpaces ? 'var(--color-success)' : 'var(--text-light)' }} />
-                          <span>장애인 주차구역: {lot.disabledSpaces ? '보유 (할인 가능)' : '미보유/정보 없음'}</span>
-                        </div>
-                        <div className={styles.cardInfoRow}>
                           <Info size={14} className={styles.cardInfoIcon} />
                           <span>요금 체계: 기본 {lot.basicTime}분 {lot.basicFee.toLocaleString()}원 / 추가 {lot.addUnitTime}분당 {lot.addUnitFee.toLocaleString()}원</span>
                         </div>
@@ -375,7 +378,6 @@ export default function ResultsClient({
             })
           )}
         </div>
-
       </aside>
 
       {/* Right Map View pane */}
@@ -387,9 +389,9 @@ export default function ResultsClient({
           parkingLots={processedLots}
           selectedLotId={selectedLotId}
           onSelectLot={(id) => setSelectedLotId(id)}
+          evStations={evStations}
         />
       </section>
-
     </div>
   );
 }

@@ -213,6 +213,84 @@
   100% { background-position: -200% 0; }
 }
 
+/* Favorite (Star) Button */
+.favBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: var(--transition-fast);
+  line-height: 1;
+}
+
+.favBtn:hover {
+  background: var(--bg-warning-light);
+  transform: scale(1.2);
+}
+
+/* EV Charging Station Section */
+.evSection {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.evHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-success);
+  margin-bottom: 8px;
+}
+
+.evSummary {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.evList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  background: var(--bg-main);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.evName {
+  flex: 1;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.evType {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-main);
+}
+
+.evDist {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
 /* Parking Lot Card List */
 .listContainer {
   flex: 1;

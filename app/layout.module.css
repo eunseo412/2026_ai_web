@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
+  padding: 0 32px;
   z-index: 1000;
   transition: var(--transition-normal);
   box-shadow: var(--shadow-sm);
@@ -22,6 +22,7 @@
   letter-spacing: -0.5px;
   cursor: pointer;
   transition: var(--transition-fast);
+  flex-shrink: 0;
 }
 
 .logo:hover {
@@ -36,16 +37,19 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 20px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .navLink {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--text-muted);
   position: relative;
-  padding: 6px 0;
+  padding: 6px 2px;
   transition: var(--transition-fast);
+  white-space: nowrap;
 }
 
 .navLink:hover {
@@ -71,15 +75,16 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .themeToggle {
   background: var(--bg-main);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -111,6 +116,64 @@
   background: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+/* Mobile hamburger button */
+.mobileMenuBtn {
+  display: none;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mobileMenuBtn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Mobile dropdown nav */
+.mobileNav {
+  display: none;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  z-index: 999;
+  box-shadow: var(--shadow-md);
+  animation: fadeIn 0.15s ease;
+}
+
+.mobileNavLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition-fast);
+}
+
+.mobileNavLink:last-child {
+  border-bottom: none;
+}
+
+.mobileNavLink:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.mobileNavLinkActive {
+  color: var(--primary);
+  font-weight: 700;
+  background: var(--primary-light);
 }
 
 .mainContent {
@@ -145,22 +208,40 @@
 
 .footerLinks {
   display: flex;
-  gap: 24px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .footerLink:hover {
   color: var(--text-main);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
+  .nav {
+    gap: 12px;
+  }
+  .navLink {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 860px) {
   .header {
     padding: 0 20px;
   }
-  
+
   .nav {
-    display: none; /* simple mobile behavior for brevity, or we can make it fully responsive */
+    display: none;
   }
-  
+
+  .mobileMenuBtn {
+    display: flex;
+  }
+
+  .mobileNav {
+    display: flex;
+  }
+
   .footerContent {
     flex-direction: column;
     text-align: center;

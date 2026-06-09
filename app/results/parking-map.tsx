@@ -5,6 +5,15 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-le
 import L from 'leaflet';
 import styles from './results.module.css';
 
+interface EvStation {
+  id: string;
+  name: string;
+  distance: number;
+  chargerType: '급속' | '완속';
+  lat: number;
+  lng: number;
+}
+
 interface MapProps {
   destination: { lat: number; lng: number };
   destinationName: string;
@@ -21,12 +30,11 @@ interface MapProps {
   }>;
   selectedLotId: string | null;
   onSelectLot: (id: string) => void;
+  evStations?: EvStation[];
 }
 
-// Controller component to automatically pan/zoom Leaflet viewport
 function MapController({ center, selectedLot }: { center: [number, number]; selectedLot: { lat: number; lng: number } | null }) {
   const map = useMap();
-  
   useEffect(() => {
     if (selectedLot) {
       map.setView([selectedLot.lat, selectedLot.lng], 16, { animate: true, duration: 0.75 });
@@ -34,23 +42,16 @@ function MapController({ center, selectedLot }: { center: [number, number]; sele
       map.setView(center, 15, { animate: true, duration: 0.5 });
     }
   }, [center, selectedLot, map]);
-
   return null;
 }
 
 export default function ParkingMap({
-  destination,
-  destinationName,
-  radius,
-  parkingLots,
-  selectedLotId,
-  onSelectLot
+  destination, destinationName, radius, parkingLots, selectedLotId, onSelectLot, evStations = []
 }: MapProps) {
-  // Center is destination coordinates
   const centerCoord: [number, number] = [destination.lat, destination.lng];
   const selectedLot = parkingLots.find(l => l.id === selectedLotId) || null;
 
-  // 100% Client-side custom div icons to prevent broken image assets in Next.js builds
+  // 목적지 마커 (파란 핀)
   const destIcon = typeof window !== 'undefined' ? L.divIcon({
     className: 'leaflet-custom-marker-dest',
     html: '<div class="pin-blue"></div>',
@@ -58,6 +59,7 @@ export default function ParkingMap({
     iconAnchor: [12, 12]
   }) : null;
 
+  // 일반 주차장 마커 (빨간 핀)
   const parkIcon = typeof window !== 'undefined' ? L.divIcon({
     className: 'leaflet-custom-marker-park',
     html: '<div class="pin-red"></div>',
@@ -65,6 +67,7 @@ export default function ParkingMap({
     iconAnchor: [9, 9]
   }) : null;
 
+  // 활성 주차장 마커 (초록 핀)
   const activeIcon = typeof window !== 'undefined' ? L.divIcon({
     className: 'leaflet-custom-marker-active',
     html: '<div class="pin-active"></div>',
@@ -72,19 +75,22 @@ export default function ParkingMap({
     iconAnchor: [12, 12]
   }) : null;
 
+  // 전기차 충전소 마커 (번개 아이콘)
+  const evIcon = typeof window !== 'undefined' ? L.divIcon({
+    className: 'leaflet-custom-marker-ev',
+    html: '<div class="pin-ev">⚡</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  }) : null;
+
   return (
-    <MapContainer
-      center={centerCoord}
-      zoom={15}
-      scrollWheelZoom={true}
-      className={styles.mapContainer}
-    >
+    <MapContainer center={centerCoord} zoom={15} scrollWheelZoom={true} className={styles.mapContainer}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Destination Marker (Blue Pin) */}
+      {/* 목적지 마커 */}
       {destIcon && (
         <Marker position={centerCoord} icon={destIcon}>
           <Popup>
@@ -96,7 +102,7 @@ export default function ParkingMap({
         </Marker>
       )}
 
-      {/* Radius Circle */}
+      {/* 반경 원 */}
       <Circle
         key={`${destination.lat}-${destination.lng}-${radius}`}
         center={centerCoord}
@@ -104,13 +110,13 @@ export default function ParkingMap({
         pathOptions={{
           color: 'var(--primary, #3b82f6)',
           fillColor: 'var(--primary, #3b82f6)',
-          fillOpacity: 0.15,
+          fillOpacity: 0.1,
           weight: 2,
           dashArray: '5, 5'
         }}
       />
 
-      {/* Parking Lot Markers (Red or Green Active pins) */}
+      {/* 주차장 마커 */}
       {parkingLots.map((lot) => {
         const isSelected = lot.id === selectedLotId;
         const iconToUse = isSelected ? activeIcon : parkIcon;
@@ -120,13 +126,30 @@ export default function ParkingMap({
             key={lot.id}
             position={[lot.lat, lot.lng]}
             icon={iconToUse}
-            eventHandlers={{
-              click: () => onSelectLot(lot.id)
-            }}
+            eventHandlers={{ click: () => onSelectLot(lot.id) }}
           >
             <Popup>
-              <div className={styles.mapPopup}>
-                <span className={styles.popupTitle}>{lot.name}</span>
+              <div
+                className={styles.mapPopup}
+                style={isSelected ? {
+                  border: '2px solid var(--color-success)',
+                  borderRadius: '10px',
+                  padding: '8px',
+                  boxShadow: '0 0 12px rgba(16,185,129,0.4)'
+                } : {}}
+              >
+                {isSelected && (
+                  <div style={{
+                    fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-success)',
+                    background: 'var(--bg-success-light)', padding: '2px 8px',
+                    borderRadius: '50px', marginBottom: '6px', display: 'inline-block'
+                  }}>
+                    ✅ 선택됨
+                  </div>
+                )}
+                <span className={styles.popupTitle} style={isSelected ? { color: 'var(--color-success)' } : {}}>
+                  {lot.name}
+                </span>
                 <div className={styles.popupRow}>
                   <span>거리:</span>
                   <strong>{lot.distance}m</strong>
@@ -138,25 +161,19 @@ export default function ParkingMap({
                 <div className={styles.popupRow}>
                   <span>상태:</span>
                   <strong style={{ color: lot.isOpen ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                    {lot.isOpen ? '이용 가능 (영업 중)' : '이용 제한 (영업 종료)'}
+                    {lot.isOpen ? '이용 가능' : '이용 제한'}
                   </strong>
                 </div>
                 <button
                   onClick={() => onSelectLot(lot.id)}
                   style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginTop: '4px',
-                    transition: 'var(--transition-fast)'
+                    backgroundColor: isSelected ? 'var(--color-success)' : 'var(--primary)',
+                    color: 'white', border: 'none', borderRadius: '4px',
+                    padding: '4px 8px', fontSize: '0.72rem', fontWeight: 600,
+                    cursor: 'pointer', marginTop: '4px', transition: 'var(--transition-fast)'
                   }}
                 >
-                  상세 카드 보기
+                  {isSelected ? '선택됨 ✓' : '카드 보기'}
                 </button>
               </div>
             </Popup>
@@ -164,7 +181,29 @@ export default function ParkingMap({
         ) : null;
       })}
 
-      {/* Map controller to pan view dynamically */}
+      {/* 전기차 충전소 마커 */}
+      {evIcon && evStations.map(ev => (
+        <Marker key={ev.id} position={[ev.lat, ev.lng]} icon={evIcon}>
+          <Popup>
+            <div className={styles.mapPopup}>
+              <span className={styles.popupTitle} style={{ color: 'var(--color-success)' }}>
+                ⚡ {ev.name}
+              </span>
+              <div className={styles.popupRow}>
+                <span>종류:</span>
+                <strong style={{ color: ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                  {ev.chargerType} 충전
+                </strong>
+              </div>
+              <div className={styles.popupRow}>
+                <span>거리:</span>
+                <strong>{ev.distance}m</strong>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+
       <MapController center={centerCoord} selectedLot={selectedLot} />
     </MapContainer>
   );
