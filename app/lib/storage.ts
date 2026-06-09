@@ -1,13 +1,12 @@
 // =========================================
-// ParkingMate - localStorage 유틸리티
+// ParkingMate - localStorage 유틸리티 (즐겨찾기, 주차위치)
 // =========================================
 
 import {
   CommunityParking,
   CommunityPost,
   FavoriteParking,
-  SavedParkingLocation,
-  ParkingSubscription
+  SavedParkingLocation
 } from './types';
 
 // ---- 키 상수 ----
@@ -16,7 +15,6 @@ const KEYS = {
   COMMUNITY_POSTS:    'pm_community_posts',
   FAVORITES:          'pm_favorites',
   SAVED_LOCATIONS:    'pm_saved_locations',
-  SUBSCRIPTIONS:      'pm_subscriptions',
 } as const;
 
 // ---- 제네릭 읽기/쓰기 ----
@@ -37,7 +35,7 @@ function writeStorage<T>(key: string, data: T[]): void {
   } catch { /* 용량 초과 등 무시 */ }
 }
 
-// ---- CommunityParking ----
+// ---- CommunityParking (동네 주차장 등록) ----
 export function getCommunityParkings(): CommunityParking[] {
   return readStorage<CommunityParking>(KEYS.COMMUNITY_PARKINGS);
 }
@@ -112,17 +110,6 @@ export function saveLocation(loc: SavedParkingLocation): void {
 export function deleteLocation(id: string): void {
   const list = getSavedLocations().filter(l => l.id !== id);
   writeStorage(KEYS.SAVED_LOCATIONS, list);
-}
-
-// ---- ParkingSubscription ----
-export function getSubscriptions(): ParkingSubscription[] {
-  return readStorage<ParkingSubscription>(KEYS.SUBSCRIPTIONS);
-}
-
-export function saveSubscription(sub: ParkingSubscription): void {
-  const list = getSubscriptions();
-  list.unshift(sub);
-  writeStorage(KEYS.SUBSCRIPTIONS, list);
 }
 
 // ---- ID 생성 유틸 ----

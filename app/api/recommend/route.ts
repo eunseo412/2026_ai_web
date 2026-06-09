@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
 추천 후보 주차장 3곳 정보:
 ${topLots.map((lot, idx) => `
-${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
+${idx + 1}. [${lot.isCommunity ? '사용자 추천 공유주차장' : (lot.type === 'public' ? '공영' : '민영')}] ${lot.name}
    - 거리: 목적지로부터 ${lot.distance}m
    - 주차 유형: ${lot.parkingType}주차장 (총 ${lot.totalSpaces}면)
    - 예상 주차 요금: ${lot.feeDisplay} (기본 ${lot.basicTime}분 ${lot.basicFee}원, 추가 ${lot.addUnitTime}분당 ${lot.addUnitFee}원)
@@ -40,14 +40,16 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
    - 영업 여부: ${lot.isOpen ? '영업 중 (체류 시간 동안 이용 가능)' : '영업 종료/체류 중 종료 우려 있음'}
    - 결제 수단: ${lot.paymentMethod || '정보 없음'}
    - 장애인 주차 구역 보유: ${lot.disabledSpaces ? '예' : '아니오'}
+   ${lot.isCommunity ? `- 특이사항: 사용자 추천 수가 높은 커뮤니티 주차장입니다. (총 추천 ${lot.likes}개 획득)` : ''}
 `).join('\n')}
 
 [작성 가이드라인]
 1. 친절하고 전문적인 톤앤매너를 유지하세요.
 2. 거리가 가장 가깝거나 요금이 가장 저렴한 주차장을 명확히 짚어주세요.
-3. 영업 여부를 고려하여 현재 방문 시간에 실제로 주차가 불가능한 곳은 경고해 주세요.
-4. 마크다운 형식을 사용하여 소제목, 불릿 포인트 등으로 일목요연하고 가독성 좋게 작성해 주세요.
-5. 너무 길지 않게 3~4문장 단위의 문단 2~3개 정도로 요약해 주세요.
+3. 커뮤니티 주차장의 경우 총 추천수와 함께 '사용자가 추천하는 주차장'임을 강조해 주세요.
+4. 영업 여부를 고려하여 현재 방문 시간에 실제로 주차가 불가능한 곳은 경고해 주세요.
+5. 마크다운 형식을 사용하여 소제목, 불릿 포인트 등으로 일목요연하고 가독성 좋게 작성해 주세요.
+6. 너무 길지 않게 3~4문장 단위의 문단 2~3개 정도로 요약해 주세요.
 `;
 
     // 1. If Gemini API Key is configured, use direct REST API fetch
@@ -124,12 +126,18 @@ ${idx + 1}. [${lot.type === 'public' ? '공영' : '민영'}] ${lot.name}
     } else {
       fallbackMd += `#### 📍 추천 1순위: ${closest.name} (최단 거리)\n`;
       fallbackMd += `- **선정 이유:** 목적지에서 불과 **${closest.distance}m** 거리에 위치해 있어 접근성이 가장 뛰어납니다.\n`;
+      if (closest.isCommunity) {
+        fallbackMd += `- **인증 정보:** 총 추천 **${closest.likes}**개를 받은 검증된 공유 주차 공간입니다.\n`;
+      }
       fallbackMd += `- **요금 분석:** 예상 체류시간(${searchParams.duration}분) 동안 **${closest.feeDisplay}**의 요금이 부과되며, ${closest.disabledSpaces ? '장애인 전용 주차구역이 마련되어 있어 편리합니다.' : '장애인 주차구역 정보가 없습니다.'}\n`;
       fallbackMd += `- **상태:** 방문하시는 시간대에 안정적으로 영업을 지속하고 있어 추천합니다.\n\n`;
 
       if (cheapest.id !== closest.id) {
         fallbackMd += `#### 💰 가성비 추천: ${cheapest.name} (최저 요금)\n`;
         fallbackMd += `- **선정 이유:** 예상 주차요금이 **${cheapest.feeDisplay}**으로 주변 주차장 중 가장 경제적입니다.\n`;
+        if (cheapest.isCommunity) {
+          fallbackMd += `- **인증 정보:** 총 추천 **${cheapest.likes}**개를 받은 검증된 공유 주차 공간입니다.\n`;
+        }
         fallbackMd += `- **거리:** 목적지로부터 **${cheapest.distance}m** 떨어져 있어 도보 이동이 필요합니다.\n`;
         fallbackMd += `- **운영 시간:** ${cheapest.operatingHoursToday}에 맞추어 주차 가능합니다.\n\n`;
       }

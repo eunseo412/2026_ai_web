@@ -1,14 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  ParkingSquare, ThumbsUp, ThumbsDown, Star, Upload, Plus, Trash2,
-  Clock, DollarSign, Users, Phone, ChevronDown, ChevronUp, MessageSquare
+  ParkingSquare, Plus, Clock, DollarSign, Users, Phone, ArrowRight, CheckCircle2
 } from 'lucide-react';
-import {
-  getCommunityParkings, saveCommunityParking, deleteCommunityParking, generateId
-} from '../lib/storage';
-import { CommunityParking, ParkingReview } from '../lib/types';
+import { CommunityParking } from '../lib/types';
 import styles from './register.module.css';
 
 // ---- 등록 폼 초기값 ----
@@ -24,100 +21,90 @@ const emptyForm = {
 };
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [parkings, setParkings] = useState<CommunityParking[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [imageDataUrl, setImageDataUrl] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [reviewForms, setReviewForms] = useState<Record<string, { author: string; rating: number; comment: string }>>({});
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [loadingList, setLoadingList] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // 로드
+  // DB에서 등록 목록 로드
+  const fetchParkings = async () => {
+    setLoadingList(true);
+    try {
+      const res = await fetch('/api/community-parkings');
+      if (res.ok) {
+        const data = await res.json();
+        setParkings(data.parkings || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch parkings:', err);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
   useEffect(() => {
-    setParkings(getCommunityParkings());
+    fetchParkings();
   }, []);
 
-  // 이미지 업로드
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setImageDataUrl(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  }
-
   // 등록
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title || !form.address) return;
     setSubmitting(true);
-    const newParking: CommunityParking = {
-      id: generateId(),
-      title: form.title,
-      address: form.address,
-      description: form.description,
-      availableTime: form.availableTime,
-      hourlyRate: Number(form.hourlyRate) || 0,
-      monthlyRate: Number(form.monthlyRate) || 0,
-      capacity: Number(form.capacity) || 1,
-      contactMethod: form.contactMethod,
-      imageDataUrl,
-      likes: 0,
-      dislikes: 0,
-      reviews: [],
-      promoted: false,
-      createdAt: new Date().toISOString(),
-    };
-    saveCommunityParking(newParking);
-    setParkings(getCommunityParkings());
-    setForm(emptyForm);
-    setImageDataUrl(undefined);
-    setShowForm(false);
-    setSubmitting(false);
-  }
+    setSuccessMsg('');
 
-  // 추천/비추천
-  function handleVote(id: string, type: 'like' | 'dislike') {
-    const list = getCommunityParkings();
-    const p = list.find(x => x.id === id);
-    if (!p) return;
-    if (type === 'like') p.likes += 1;
-    else p.dislikes += 1;
-    p.promoted = p.likes >= 50;
-    saveCommunityParking(p);
-    setParkings(getCommunityParkings());
-  }
+    try {
+      // 1. 주소 지오코딩 수행
+      const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(form.address)}`);
+      let lat = 37.5559;
+      let lng = 126.9723;
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData.lat && geoData.lng) {
+          lat = geoData.lat;
+          lng = geoData.lng;
+        }
+      }
 
-  // 후기 제출
-  function handleReview(id: string) {
-    const rf = reviewForms[id];
-    if (!rf || !rf.author || !rf.comment) return;
-    const list = getCommunityParkings();
-    const p = list.find(x => x.id === id);
-    if (!p) return;
-    const review: ParkingReview = {
-      id: generateId(),
-      author: rf.author,
-      rating: rf.rating || 5,
-      comment: rf.comment,
-      createdAt: new Date().toISOString(),
-    };
-    p.reviews.push(review);
-    saveCommunityParking(p);
-    setParkings(getCommunityParkings());
-    setReviewForms(prev => ({ ...prev, [id]: { author: '', rating: 5, comment: '' } }));
-  }
+      // 2. DB에 저장
+      const res = await fetch('/api/community-parkings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          address: form.address,
+          description: form.description,
+          available_time: form.availableTime,
+          hourly_rate: Number(form.hourlyRate) || 0,
+          monthly_rate: Number(form.monthlyRate) || 0,
+          capacity: Number(form.capacity) || 1,
+          contact_method: form.contactMethod,
+          lat,
+          lng,
+          author: '사용자',
+        }),
+      });
 
-  function handleDelete(id: string) {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
-    deleteCommunityParking(id);
-    setParkings(getCommunityParkings());
-  }
-
-  function avgRating(reviews: ParkingReview[]) {
-    if (!reviews.length) return 0;
-    return (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+      if (res.ok) {
+        setSuccessMsg('🎉 주차장이 성공적으로 공유 등록되었으며, 커뮤니티에 소개 글이 자동 발행되었습니다!');
+        setForm(emptyForm);
+        setShowForm(false);
+        fetchParkings();
+        // 6초 후 성공메시지 자동 제거
+        setTimeout(() => setSuccessMsg(''), 6000);
+      } else {
+        const errData = await res.json();
+        alert(`등록 실패: ${errData.error || '알 수 없는 오류'}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('등록 중 에러가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -127,11 +114,11 @@ export default function RegisterPage() {
         <div>
           <h1 className={styles.pageTitle}>
             <ParkingSquare size={28} />
-            내 주차장 등록
+            동네 주차장 등록
           </h1>
           <p className={styles.pageSubtitle}>
             빌라 앞 공터, 상가 뒤 공간 등 실생활 주차 공간을 공유해 보세요.
-            추천 50개 이상 시 검색 결과에도 노출됩니다.
+            등록 시 자동으로 커뮤니티 글이 발행되며, 추천 50개 이상 시 공식 주차장으로 승격됩니다!
           </p>
         </div>
         <button className={styles.primaryBtn} onClick={() => setShowForm(v => !v)}>
@@ -139,6 +126,23 @@ export default function RegisterPage() {
           {showForm ? '닫기' : '장소 등록하기'}
         </button>
       </div>
+
+      {successMsg && (
+        <div className={styles.promoteBanner} style={{ backgroundColor: 'var(--bg-success-light)', border: '1px solid var(--color-success)', color: 'var(--color-success)' }}>
+          <CheckCircle2 size={20} />
+          <div style={{ flex: 1 }}>
+            <strong>등록 완료!</strong>
+            <p style={{ margin: 0, fontSize: '0.85rem' }}>{successMsg}</p>
+          </div>
+          <button 
+            className={styles.ghostBtn} 
+            style={{ fontSize: '0.8rem', padding: '4px 8px', color: 'var(--color-success)' }}
+            onClick={() => router.push('/community')}
+          >
+            커뮤니티 글 확인하러 가기 <ArrowRight size={12} />
+          </button>
+        </div>
+      )}
 
       {/* 등록 폼 */}
       {showForm && (
@@ -160,7 +164,7 @@ export default function RegisterPage() {
               <input
                 className={styles.input}
                 required
-                placeholder="상세 주소를 입력하세요"
+                placeholder="상세 주소를 입력하세요 (지도 검색 및 계산에 사용됩니다)"
                 value={form.address}
                 onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
               />
@@ -226,16 +230,6 @@ export default function RegisterPage() {
                 onChange={e => setForm(p => ({ ...p, contactMethod: e.target.value }))}
               />
             </div>
-            <div className={styles.formGroupFull}>
-              <label className={styles.label}><Upload size={14} /> 사진 업로드</label>
-              <div className={styles.uploadArea} onClick={() => fileRef.current?.click()}>
-                {imageDataUrl
-                  ? <img src={imageDataUrl} alt="업로드된 사진" className={styles.uploadPreview} />
-                  : <span>클릭하여 사진 선택</span>
-                }
-              </div>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{ display: 'none' }} />
-            </div>
           </div>
           <div className={styles.formActions}>
             <button type="submit" className={styles.primaryBtn} disabled={submitting}>
@@ -252,13 +246,18 @@ export default function RegisterPage() {
       <div className={styles.promoteBanner}>
         <span style={{ fontSize: '1.2rem' }}>🚀</span>
         <div>
-          <strong>승격 시스템</strong>
-          <p>추천 수 50개 이상 시 공식 주차장 검색 결과에도 노출됩니다!</p>
+          <strong>사용자 평판 승격 시스템</strong>
+          <p>등록 후 커뮤니티 페이지에서 추천 50개 이상을 달성하면, "주차장 찾기" 공식 지도 및 결과 리스트에 [커뮤니티 인증] 주차장으로 노출됩니다!</p>
         </div>
       </div>
 
       {/* 등록된 장소 목록 */}
-      {parkings.length === 0 ? (
+      <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '24px 0 12px' }}>등록된 공유 주차장 목록 ({parkings.length}개)</h2>
+      {loadingList ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-light)' }}>
+          데이터 로딩 중...
+        </div>
+      ) : parkings.length === 0 ? (
         <div className={styles.emptyState}>
           <ParkingSquare size={48} style={{ color: 'var(--text-light)', marginBottom: '12px' }} />
           <p>아직 등록된 주차 공간이 없습니다.</p>
@@ -267,120 +266,34 @@ export default function RegisterPage() {
       ) : (
         <div className={styles.listGrid}>
           {parkings.map(p => {
-            const isExpanded = expandedId === p.id;
-            const rf = reviewForms[p.id] || { author: '', rating: 5, comment: '' };
             return (
               <div key={p.id} className={`${styles.card} ${p.promoted ? styles.promotedCard : ''}`}>
-                {p.promoted && <div className={styles.promotedBadge}>🏆 검색 결과 노출 중</div>}
-                {p.imageDataUrl && (
-                  <img src={p.imageDataUrl} alt={p.title} className={styles.cardImage} />
-                )}
+                {p.promoted && <div className={styles.promotedBadge}>🏆 공식 주차장 승격 완료</div>}
                 <div className={styles.cardBody}>
-                  <div className={styles.cardTitleRow}>
-                    <h3 className={styles.cardTitle}>{p.title}</h3>
-                    <button className={styles.deleteBtn} onClick={() => handleDelete(p.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  <h3 className={styles.cardTitle}>{p.title}</h3>
                   <p className={styles.cardAddress}>📍 {p.address}</p>
                   {p.description && <p className={styles.cardDesc}>{p.description}</p>}
 
                   <div className={styles.cardMeta}>
-                    {p.availableTime && <span><Clock size={13} /> {p.availableTime}</span>}
-                    {p.hourlyRate > 0 && <span><DollarSign size={13} /> 시간당 {p.hourlyRate.toLocaleString()}원</span>}
-                    {p.monthlyRate > 0 && <span><DollarSign size={13} /> 월 {p.monthlyRate.toLocaleString()}원</span>}
-                    {p.capacity && <span><Users size={13} /> {p.capacity}대</span>}
-                    {p.contactMethod && <span><Phone size={13} /> {p.contactMethod}</span>}
+                    {p.available_time && <span><Clock size={13} /> {p.available_time}</span>}
+                    {p.hourly_rate > 0 && <span><DollarSign size={13} /> 시간당 {p.hourly_rate.toLocaleString()}원</span>}
+                    {p.monthly_rate > 0 && <span><DollarSign size={13} /> 월 {p.monthly_rate.toLocaleString()}원</span>}
+                    {p.capacity && <span><Users size={13} /> {p.capacity}대 가능</span>}
+                    {p.contact_method && <span><Phone size={13} /> {p.contact_method}</span>}
                   </div>
 
-                  {/* 별점 & 추천 수 */}
-                  <div className={styles.statsRow}>
-                    <span className={styles.ratingBadge}>
-                      <Star size={13} fill="currentColor" /> {avgRating(p.reviews)} ({p.reviews.length}개 후기)
+                  <div style={{ marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                      추천: {p.likes} | 비추천: {p.dislikes}
                     </span>
-                    <span>등록일: {new Date(p.createdAt).toLocaleDateString()}</span>
-                  </div>
-
-                  {/* 추천/비추천 */}
-                  <div className={styles.voteRow}>
-                    <button className={styles.likeBtn} onClick={() => handleVote(p.id, 'like')}>
-                      <ThumbsUp size={15} /> 추천 {p.likes}
-                    </button>
-                    <button className={styles.dislikeBtn} onClick={() => handleVote(p.id, 'dislike')}>
-                      <ThumbsDown size={15} /> 비추천 {p.dislikes}
+                    <button
+                      className={styles.ghostBtn}
+                      style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                      onClick={() => router.push('/community?tab=parking')}
+                    >
+                      커뮤니티에서 추천 & 후기 보기
                     </button>
                   </div>
-
-                  {/* 후기 토글 */}
-                  <button
-                    className={styles.ghostBtn}
-                    style={{ width: '100%', marginTop: '8px' }}
-                    onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                  >
-                    <MessageSquare size={14} />
-                    후기 {p.reviews.length}개
-                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </button>
-
-                  {/* 후기 목록 */}
-                  {isExpanded && (
-                    <div className={styles.reviewSection}>
-                      {p.reviews.map(r => (
-                        <div key={r.id} className={styles.reviewItem}>
-                          <div className={styles.reviewHeader}>
-                            <strong>{r.author}</strong>
-                            <span className={styles.reviewRating}>
-                              {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
-                            </span>
-                            <span className={styles.reviewDate}>
-                              {new Date(r.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className={styles.reviewComment}>{r.comment}</p>
-                        </div>
-                      ))}
-
-                      {/* 후기 작성 폼 */}
-                      <div className={styles.reviewForm}>
-                        <h4>후기 작성</h4>
-                        <input
-                          className={styles.input}
-                          placeholder="닉네임"
-                          value={rf.author}
-                          onChange={e => setReviewForms(prev => ({
-                            ...prev, [p.id]: { ...rf, author: e.target.value }
-                          }))}
-                        />
-                        <select
-                          className={styles.input}
-                          value={rf.rating}
-                          onChange={e => setReviewForms(prev => ({
-                            ...prev, [p.id]: { ...rf, rating: Number(e.target.value) }
-                          }))}
-                        >
-                          {[5, 4, 3, 2, 1].map(n => (
-                            <option key={n} value={n}>{'★'.repeat(n)} {n}점</option>
-                          ))}
-                        </select>
-                        <textarea
-                          className={styles.textarea}
-                          rows={2}
-                          placeholder="이용 후기를 남겨주세요."
-                          value={rf.comment}
-                          onChange={e => setReviewForms(prev => ({
-                            ...prev, [p.id]: { ...rf, comment: e.target.value }
-                          }))}
-                        />
-                        <button
-                          className={styles.primaryBtn}
-                          onClick={() => handleReview(p.id)}
-                          type="button"
-                        >
-                          후기 등록
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );

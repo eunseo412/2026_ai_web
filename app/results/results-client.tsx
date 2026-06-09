@@ -54,35 +54,9 @@ interface ParkingLot {
   operatingHoursToday: string;
   estimatedFee: number;
   feeDisplay: string;
-  source: 'public_api' | 'local_real_database';
-}
-
-// 목 전기차 충전소 데이터 생성 (실제 위경도 반경 내 임의 오프셋 적용)
-interface EvStation {
-  id: string;
-  name: string;
-  distance: number;
-  chargerType: '급속' | '완속';
-  lat: number;
-  lng: number;
-}
-
-function generateMockEvStations(center: { lat: number; lng: number }, radius: number): EvStation[] {
-  const stations = [
-    { name: '공영주차장 전기차 충전소', dist: Math.round(radius * 0.25), type: '급속' as const, dLat: 0.0008, dLng: 0.0006 },
-    { name: '아파트 지하 급속충전소', dist: Math.round(radius * 0.48), type: '급속' as const, dLat: -0.001, dLng: 0.001 },
-    { name: '마트 완속충전소', dist: Math.round(radius * 0.67), type: '완속' as const, dLat: 0.0015, dLng: -0.0008 },
-    { name: '주민센터 완속충전소', dist: Math.round(radius * 0.85), type: '완속' as const, dLat: -0.0018, dLng: -0.0012 },
-  ].filter(s => s.dist <= radius);
-
-  return stations.map((s, i) => ({
-    id: `ev-${i}`,
-    name: s.name,
-    distance: s.dist,
-    chargerType: s.type,
-    lat: center.lat + s.dLat,
-    lng: center.lng + s.dLng,
-  }));
+  source: 'public_api' | 'local_real_database' | 'community';
+  isCommunity?: boolean;
+  likes?: number;
 }
 
 interface ResultsClientProps {
@@ -101,7 +75,6 @@ export default function ResultsClient({
   const [aiRecommendation, setAiRecommendation] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
-  const evStations = generateMockEvStations(destinationCoord, searchParams.radius);
 
   // 즐겨찾기 초기 로드
   useEffect(() => {
@@ -255,32 +228,6 @@ export default function ResultsClient({
                 {renderMarkdown(aiRecommendation)}
               </div>
             )}
-
-            {/* 전기차 충전소 섹션 */}
-            {evStations.length > 0 && (
-              <div className={styles.evSection}>
-                <div className={styles.evHeader}>
-                  <Zap size={15} color="var(--color-success)" />
-                  <span>전기차 충전소 정보</span>
-                </div>
-                <p className={styles.evSummary}>
-                  반경 {searchParams.radius}m 내 전기차 충전소 <strong>{evStations.length}곳</strong>이 확인되었습니다.
-                  가장 가까운 충전소는 목적지에서 <strong>{evStations[0].distance}m</strong> 거리입니다.
-                </p>
-                <div className={styles.evList}>
-                  {evStations.map(ev => (
-                    <div key={ev.id} className={styles.evItem}>
-                      <Zap size={12} color={ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)'} />
-                      <span className={styles.evName}>{ev.name}</span>
-                      <span className={styles.evType} style={{ color: ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                        {ev.chargerType}
-                      </span>
-                      <span className={styles.evDist}>{ev.distance}m</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -319,6 +266,11 @@ export default function ResultsClient({
                         <span className={lot.isOpen ? styles.badgeOpen : styles.badgeClosed}>
                           {lot.isOpen ? '영업 중' : '체류 중 종료'}
                         </span>
+                        {lot.isCommunity && (
+                          <span className={styles.badgePrivate} style={{ backgroundColor: 'var(--bg-primary-light, #eff6ff)', color: 'var(--primary, #3b82f6)', border: '1px solid var(--primary, #3b82f6)' }}>
+                            [커뮤니티 인증]
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -389,7 +341,6 @@ export default function ResultsClient({
           parkingLots={processedLots}
           selectedLotId={selectedLotId}
           onSelectLot={(id) => setSelectedLotId(id)}
-          evStations={evStations}
         />
       </section>
     </div>

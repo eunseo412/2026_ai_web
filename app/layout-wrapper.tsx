@@ -11,8 +11,7 @@ import styles from './layout.module.css';
 
 const NAV_ITEMS = [
   { href: '/',                  label: '주차장 찾기',    icon: MapPin },
-  { href: '/register',          label: '내 주차장 등록', icon: ParkingSquare },
-  { href: '/subscription',      label: '정기결제',       icon: CreditCard },
+  { href: '/register',          label: '동네 주차장 등록', icon: ParkingSquare },
   { href: '/community',         label: '커뮤니티',       icon: MessageSquare },
   { href: '/favorites',         label: '단골 주차장',    icon: Star },
   { href: '/parking-location',  label: '주차 위치 찾기', icon: Navigation },
@@ -121,7 +120,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
           <div className={styles.footerLinks}>
             <Link href="/" className={styles.footerLink}>주차장 찾기</Link>
-            <Link href="/register" className={styles.footerLink}>내 주차장 등록</Link>
+            <Link href="/register" className={styles.footerLink}>동네 주차장 등록</Link>
             <Link href="/community" className={styles.footerLink}>커뮤니티</Link>
             <Link href="/about" className={styles.footerLink}>서비스 소개</Link>
             <Link href="/contact" className={styles.footerLink}>팀원 연락처</Link>

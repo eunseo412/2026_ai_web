@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { supabase } from '../../lib/supabase';
 
 interface ParkingLot {
   id: string;
@@ -27,7 +28,9 @@ interface ParkingLot {
   phone: string; // 전화번호
   lat: number;
   lng: number;
-  source: 'public_api' | 'local_real_database';
+  source: 'public_api' | 'local_real_database' | 'community';
+  isCommunity?: boolean;
+  likes?: number;
 }
 
 // Haversine formula to calculate distance in meters
@@ -525,6 +528,54 @@ export async function GET(request: Request) {
       }
     }
   });
+
+  // 3. Query promoted = true community parkings from Supabase
+  try {
+    const { data: dbParkings, error: dbError } = await supabase
+      .from('community_parkings')
+      .select('*')
+      .eq('promoted', true);
+
+    if (dbParkings && dbParkings.length > 0) {
+      dbParkings.forEach(p => {
+        const dist = getDistance(targetLat, targetLng, p.lat, p.lng);
+        // We only add them if they are within searchRadius!
+        if (dist <= searchRadius) {
+          const lot: ParkingLot = {
+            id: `community-${p.id}`,
+            name: p.title,
+            type: 'private',
+            parkingType: '공유',
+            address: p.address,
+            totalSpaces: p.capacity || 1,
+            operatingDays: '평일+토요일+공휴일',
+            weekdayStart: '00:00', weekdayEnd: '23:59',
+            satStart: '00:00', satEnd: '23:59',
+            holidayStart: '00:00', holidayEnd: '23:59',
+            feeType: p.hourly_rate === 0 ? '무료' : '유료',
+            basicTime: 60,
+            basicFee: p.hourly_rate || 0,
+            addUnitTime: 60,
+            addUnitFee: p.hourly_rate || 0,
+            dayFee: p.monthly_rate || null,
+            paymentMethod: p.contact_method || '현장결제',
+            disabledSpaces: false,
+            phone: p.contact_method || '정보없음',
+            lat: p.lat,
+            lng: p.lng,
+            source: 'community',
+            isCommunity: true,
+            likes: p.likes
+          };
+          
+          // Add to map, overwrite duplicates if any (or check by name)
+          mergedLotsMap.set(lot.name.trim(), lot);
+        }
+      });
+    }
+  } catch (err: any) {
+    console.error('Supabase query failed in parking route:', err.message);
+  }
 
   const finalLots = Array.from(mergedLotsMap.values());
 

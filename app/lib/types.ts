@@ -1,57 +1,62 @@
 // =========================================
-// ParkingMate - 공통 타입 정의
+// ParkingMate - 공통 타입 정의 (Supabase 연동 버전)
 // =========================================
 
-// 커뮤니티 등록 주차장 리뷰
-export interface ParkingReview {
-  id: string;
-  author: string;
-  rating: number; // 1-5
-  comment: string;
-  createdAt: string; // ISO string
-}
+// ---- DB 테이블 타입 ----
 
-// 커뮤니티 등록 주차장
 export interface CommunityParking {
-  id: string;
+  id: string;                  // UUID
   title: string;
   address: string;
   description: string;
-  availableTime: string;       // 예: "평일 18:00-08:00, 주말 전일"
-  hourlyRate: number;          // 시간당 요금 (원)
-  monthlyRate: number;         // 월 정기권 요금 (원)
-  capacity: number;            // 주차 가능 대수
-  contactMethod: string;       // 연락 방법
-  imageDataUrl?: string;       // base64 이미지
+  available_time: string;
+  hourly_rate: number;
+  monthly_rate: number;
+  capacity: number;
+  contact_method: string;
+  image_url?: string | null;
   likes: number;
   dislikes: number;
-  reviews: ParkingReview[];
-  promoted: boolean;           // likes >= 50 이면 true
-  lat?: number;
-  lng?: number;
-  createdAt: string;           // ISO string
-}
-
-// 커뮤니티 게시글 댓글
-export interface PostComment {
-  id: string;
+  promoted: boolean;
   author: string;
-  content: string;
-  createdAt: string;
+  lat: number;
+  lng: number;
+  created_at: string;
+  reviews?: Review[];          // JOIN 결과
 }
 
-// 커뮤니티 게시글
+export interface Review {
+  id: string;
+  parking_id: string;
+  author: string;
+  rating: number;  // 1-5
+  comment: string;
+  created_at: string;
+}
+
 export interface CommunityPost {
   id: string;
+  category: 'parking' | 'review';   // parking=공유주차장자동글, review=후기게시판
+  parking_id?: string | null;
   title: string;
   content: string;
   author: string;
   views: number;
-  comments: PostComment[];
-  createdAt: string;
+  created_at: string;
+  comments?: Comment[];             // JOIN 결과
+  community_parkings?: CommunityParking | null; // JOIN 결과
 }
 
-// 단골(즐겨찾기) 주차장
+export interface Comment {
+  id: string;
+  post_id: string;
+  author: string;
+  content: string;
+  created_at: string;
+}
+
+// ---- LocalStorage 전용 타입 (즐겨찾기, 주차위치) ----
+
 export interface FavoriteParking {
   id: string;
   name: string;
@@ -61,31 +66,31 @@ export interface FavoriteParking {
   lat: number;
   lng: number;
   source: 'public_api' | 'local_real_database' | 'community';
-  savedAt: string; // ISO string
+  savedAt: string;
 }
 
-// 저장된 주차 위치
 export interface SavedParkingLocation {
   id: string;
   memo: string;
   imageDataUrl?: string;
-  savedAt: string;   // ISO string
+  savedAt: string;
   lat: number;
   lng: number;
   address?: string;
 }
 
-// 정기결제 구독 레코드
-export interface ParkingSubscription {
+// ---- 레거시 호환용 (localStorage storage.ts 하위 호환) ----
+export interface ParkingReview {
   id: string;
-  parkingId: string;
-  parkingTitle: string;
-  parkingAddress: string;
-  monthlyRate: number;
-  startDate: string;  // YYYY-MM-DD
-  endDate: string;    // YYYY-MM-DD
-  timeSlot: string;
-  totalAmount: number;
-  status: 'active' | 'paid' | 'expired';
-  paidAt?: string;
+  author: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface PostComment {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: string;
 }

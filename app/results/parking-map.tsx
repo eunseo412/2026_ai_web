@@ -5,15 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-le
 import L from 'leaflet';
 import styles from './results.module.css';
 
-interface EvStation {
-  id: string;
-  name: string;
-  distance: number;
-  chargerType: '급속' | '완속';
-  lat: number;
-  lng: number;
-}
-
 interface MapProps {
   destination: { lat: number; lng: number };
   destinationName: string;
@@ -30,7 +21,6 @@ interface MapProps {
   }>;
   selectedLotId: string | null;
   onSelectLot: (id: string) => void;
-  evStations?: EvStation[];
 }
 
 function MapController({ center, selectedLot }: { center: [number, number]; selectedLot: { lat: number; lng: number } | null }) {
@@ -46,7 +36,7 @@ function MapController({ center, selectedLot }: { center: [number, number]; sele
 }
 
 export default function ParkingMap({
-  destination, destinationName, radius, parkingLots, selectedLotId, onSelectLot, evStations = []
+  destination, destinationName, radius, parkingLots, selectedLotId, onSelectLot
 }: MapProps) {
   const centerCoord: [number, number] = [destination.lat, destination.lng];
   const selectedLot = parkingLots.find(l => l.id === selectedLotId) || null;
@@ -75,13 +65,7 @@ export default function ParkingMap({
     iconAnchor: [12, 12]
   }) : null;
 
-  // 전기차 충전소 마커 (번개 아이콘)
-  const evIcon = typeof window !== 'undefined' ? L.divIcon({
-    className: 'leaflet-custom-marker-ev',
-    html: '<div class="pin-ev">⚡</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
-  }) : null;
+
 
   return (
     <MapContainer center={centerCoord} zoom={15} scrollWheelZoom={true} className={styles.mapContainer}>
@@ -181,28 +165,7 @@ export default function ParkingMap({
         ) : null;
       })}
 
-      {/* 전기차 충전소 마커 */}
-      {evIcon && evStations.map(ev => (
-        <Marker key={ev.id} position={[ev.lat, ev.lng]} icon={evIcon}>
-          <Popup>
-            <div className={styles.mapPopup}>
-              <span className={styles.popupTitle} style={{ color: 'var(--color-success)' }}>
-                ⚡ {ev.name}
-              </span>
-              <div className={styles.popupRow}>
-                <span>종류:</span>
-                <strong style={{ color: ev.chargerType === '급속' ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                  {ev.chargerType} 충전
-                </strong>
-              </div>
-              <div className={styles.popupRow}>
-                <span>거리:</span>
-                <strong>{ev.distance}m</strong>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+
 
       <MapController center={centerCoord} selectedLot={selectedLot} />
     </MapContainer>
