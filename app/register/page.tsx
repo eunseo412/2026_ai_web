@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ParkingSquare, Plus, Clock, DollarSign, Users, Phone, ArrowRight, CheckCircle2
+  ParkingSquare, Plus, Clock, DollarSign, Users, Phone
 } from 'lucide-react';
 import { CommunityParking } from '../lib/types';
 import styles from './register.module.css';
@@ -127,22 +127,7 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      {successMsg && (
-        <div className={styles.promoteBanner} style={{ backgroundColor: 'var(--bg-success-light)', border: '1px solid var(--color-success)', color: 'var(--color-success)' }}>
-          <CheckCircle2 size={20} />
-          <div style={{ flex: 1 }}>
-            <strong>등록 완료!</strong>
-            <p style={{ margin: 0, fontSize: '0.85rem' }}>{successMsg}</p>
-          </div>
-          <button 
-            className={styles.ghostBtn} 
-            style={{ fontSize: '0.8rem', padding: '4px 8px', color: 'var(--color-success)' }}
-            onClick={() => router.push('/community')}
-          >
-            커뮤니티 글 확인하러 가기 <ArrowRight size={12} />
-          </button>
-        </div>
-      )}
+
 
       {/* 등록 폼 */}
       {showForm && (
@@ -282,17 +267,10 @@ export default function RegisterPage() {
                     {p.contact_method && <span><Phone size={13} /> {p.contact_method}</span>}
                   </div>
 
-                  <div style={{ marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ marginTop: '12px' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
                       추천: {p.likes} | 비추천: {p.dislikes}
                     </span>
-                    <button
-                      className={styles.ghostBtn}
-                      style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                      onClick={() => router.push('/community?tab=parking')}
-                    >
-                      커뮤니티에서 추천 & 후기 보기
-                    </button>
                   </div>
                 </div>
               </div>
