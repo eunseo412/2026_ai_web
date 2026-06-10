@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Sun, Moon, ParkingSquare,
-  MapPin, Star, Zap, MessageSquare, CreditCard, Navigation, Info, Users, Menu, X
+  MapPin, Star, MessageSquare, Navigation, Info, Users, Menu, X
 } from 'lucide-react';
 import styles from './layout.module.css';
 
