@@ -5,7 +5,7 @@
 // ---- DB 테이블 타입 ----
 
 export interface CommunityParking {
-  id: string;                  // UUID
+  id: string;                   // UUID
   title: string;
   address: string;
   description: string;
@@ -22,32 +22,31 @@ export interface CommunityParking {
   lat: number;
   lng: number;
   created_at: string;
-  reviews?: Review[];          // JOIN 결과
+  reviews?: Review[];            // JOIN 결과
 }
 
 export interface Review {
   id: string;
   parking_id: string;
   author: string;
-  rating: number;  // 1-5
+  rating: number;                // 1-5
   comment: string;
   created_at: string;
 }
 
+// 커뮤니티 게시글 (후기 게시판)
 export interface CommunityPost {
   id: string;
-  category: 'parking' | 'review';   // parking=공유주차장자동글, review=후기게시판
-  parking_id?: string | null;
   title: string;
   content: string;
   author: string;
   views: number;
   created_at: string;
-  comments?: Comment[];             // JOIN 결과
-  community_parkings?: CommunityParking | null; // JOIN 결과
+  community_comments?: CommunityComment[];  // JOIN 결과
 }
 
-export interface Comment {
+// 댓글 (community_comments 테이블)
+export interface CommunityComment {
   id: string;
   post_id: string;
   author: string;
@@ -77,20 +76,4 @@ export interface SavedParkingLocation {
   lat: number;
   lng: number;
   address?: string;
-}
-
-// ---- 레거시 호환용 (localStorage storage.ts 하위 호환) ----
-export interface ParkingReview {
-  id: string;
-  author: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-}
-
-export interface PostComment {
-  id: string;
-  author: string;
-  content: string;
-  createdAt: string;
 }
