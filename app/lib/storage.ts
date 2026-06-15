@@ -1,20 +1,14 @@
 // =========================================
-// ParkingMate - localStorage 유틸리티 (즐겨찾기, 주차위치)
+// ParkingMate - localStorage 유틸리티
+// 즐겨찾기(FavoriteParking), 주차위치(SavedParkingLocation) 전용
 // =========================================
 
-import {
-  CommunityParking,
-  CommunityPost,
-  FavoriteParking,
-  SavedParkingLocation
-} from './types';
+import { FavoriteParking, SavedParkingLocation } from './types';
 
 // ---- 키 상수 ----
 const KEYS = {
-  COMMUNITY_PARKINGS: 'pm_community_parkings',
-  COMMUNITY_POSTS:    'pm_community_posts',
-  FAVORITES:          'pm_favorites',
-  SAVED_LOCATIONS:    'pm_saved_locations',
+  FAVORITES:       'pm_favorites',
+  SAVED_LOCATIONS: 'pm_saved_locations',
 } as const;
 
 // ---- 제네릭 읽기/쓰기 ----
@@ -35,47 +29,7 @@ function writeStorage<T>(key: string, data: T[]): void {
   } catch { /* 용량 초과 등 무시 */ }
 }
 
-// ---- CommunityParking (동네 주차장 등록) ----
-export function getCommunityParkings(): CommunityParking[] {
-  return readStorage<CommunityParking>(KEYS.COMMUNITY_PARKINGS);
-}
-
-export function saveCommunityParking(parking: CommunityParking): void {
-  const list = getCommunityParkings();
-  const idx = list.findIndex(p => p.id === parking.id);
-  if (idx >= 0) list[idx] = parking;
-  else list.unshift(parking);
-  writeStorage(KEYS.COMMUNITY_PARKINGS, list);
-}
-
-export function deleteCommunityParking(id: string): void {
-  const list = getCommunityParkings().filter(p => p.id !== id);
-  writeStorage(KEYS.COMMUNITY_PARKINGS, list);
-}
-
-export function getCommunityParkingById(id: string): CommunityParking | null {
-  return getCommunityParkings().find(p => p.id === id) ?? null;
-}
-
-// ---- CommunityPost ----
-export function getCommunityPosts(): CommunityPost[] {
-  return readStorage<CommunityPost>(KEYS.COMMUNITY_POSTS);
-}
-
-export function saveCommunityPost(post: CommunityPost): void {
-  const list = getCommunityPosts();
-  const idx = list.findIndex(p => p.id === post.id);
-  if (idx >= 0) list[idx] = post;
-  else list.unshift(post);
-  writeStorage(KEYS.COMMUNITY_POSTS, list);
-}
-
-export function deleteCommunityPost(id: string): void {
-  const list = getCommunityPosts().filter(p => p.id !== id);
-  writeStorage(KEYS.COMMUNITY_POSTS, list);
-}
-
-// ---- FavoriteParking ----
+// ---- FavoriteParking (단골 주차장) ----
 export function getFavorites(): FavoriteParking[] {
   return readStorage<FavoriteParking>(KEYS.FAVORITES);
 }
@@ -96,7 +50,7 @@ export function isFavorite(id: string): boolean {
   return getFavorites().some(f => f.id === id);
 }
 
-// ---- SavedParkingLocation ----
+// ---- SavedParkingLocation (주차 위치 찾기) ----
 export function getSavedLocations(): SavedParkingLocation[] {
   return readStorage<SavedParkingLocation>(KEYS.SAVED_LOCATIONS);
 }
